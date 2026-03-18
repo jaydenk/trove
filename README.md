@@ -94,11 +94,15 @@ TroveLinkManager/
 │   │   ├── hooks/
 │   │   │   ├── useAuth.ts        # Auth state hook (token validation, login/logout)
 │   │   │   ├── useCollections.ts # Fetches collections from the API
+│   │   │   ├── useLinks.ts       # Fetches paginated/filtered links from the API
 │   │   │   └── useTags.ts        # Fetches tags from the API
 │   │   ├── components/
 │   │   │   ├── LoginScreen.tsx       # Token login screen
-│   │   │   └── CollectionSidebar.tsx # Left sidebar with collections, archive, and tags
-│   │   ├── App.tsx          # Root component with sidebar layout and auth gating
+│   │   │   ├── CollectionSidebar.tsx # Left sidebar with collections, archive, and tags
+│   │   │   ├── SearchBar.tsx         # Debounced search input with Cmd+K shortcut
+│   │   │   ├── LinkCard.tsx          # Link list item with favicon, title, domain, tags
+│   │   │   └── AddLinkModal.tsx      # Modal for adding links with extraction preview
+│   │   ├── App.tsx          # Root component with sidebar layout, add modal, and auth gating
 │   │   ├── main.tsx
 │   │   └── index.css
 │   ├── index.html

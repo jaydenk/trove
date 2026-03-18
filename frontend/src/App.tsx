@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useLinks } from "./hooks/useLinks";
+import { useCollections } from "./hooks/useCollections";
 import LoginScreen from "./components/LoginScreen";
 import CollectionSidebar from "./components/CollectionSidebar";
 import LinkCard from "./components/LinkCard";
 import SearchBar from "./components/SearchBar";
+import AddLinkModal from "./components/AddLinkModal";
 
 /**
  * Sanitise FTS snippet HTML — only allow <b> tags used by SQLite snippet().
@@ -36,6 +38,8 @@ export default function App() {
   const [selectedLinkId, setSelectedLinkId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const { collections, refetch: refetchCollections } = useCollections();
 
   const handleSelectCollection = (id: string | null) => {
     setSelectedCollection(id);
@@ -50,6 +54,18 @@ export default function App() {
     setPage(1);
     setSelectedLinkId(null);
   };
+
+  // Cmd+N / Ctrl+N to open add modal
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "n") {
+        e.preventDefault();
+        setIsAddModalOpen(true);
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const isSearching = searchQuery.trim().length > 0;
 
@@ -69,7 +85,12 @@ export default function App() {
     return { page };
   })();
 
-  const { links, pagination, isLoading: linksLoading } = useLinks(linkFilters);
+  const {
+    links,
+    pagination,
+    isLoading: linksLoading,
+    refetch: refetchLinks,
+  } = useLinks(linkFilters);
 
   if (isLoading) {
     return (
@@ -126,6 +147,16 @@ export default function App() {
             }}
           />
           <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => setIsAddModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-md bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 px-3 py-1.5 text-sm font-medium hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+              </svg>
+              Add
+            </button>
             <span className="text-sm text-muted dark:text-dark-muted">
               {user?.name}
             </span>
@@ -218,6 +249,16 @@ export default function App() {
           </div>
         )}
       </div>
+
+      <AddLinkModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSaved={() => {
+          refetchLinks();
+          refetchCollections();
+        }}
+        collections={collections}
+      />
     </div>
   );
 }

@@ -74,6 +74,7 @@ TroveLinkManager/
 │   │   ├── tags.ts           # Tag CRUD routes
 │   │   ├── links.ts          # Link CRUD, search, archive, extraction routes
 │   │   └── __tests__/        # Route-level tests
+│   ├── server.ts              # Hono app assembly, route mounting, static file serving
 │   ├── services/
 │   │   ├── extractor.ts       # Content extraction (Readability + OG fallback)
 │   │   └── __tests__/         # Service-level tests
@@ -161,7 +162,11 @@ The API returns structured JSON errors:
 }
 ```
 
-Error codes: `NOT_FOUND` (404), `UNAUTHORIZED` (401), `FORBIDDEN` (403), `VALIDATION_ERROR` (400), `DUPLICATE_URL` (409), `RATE_LIMITED` (429).
+Error codes: `NOT_FOUND` (404), `UNAUTHORIZED` (401), `FORBIDDEN` (403), `VALIDATION_ERROR` (400), `DUPLICATE_URL` (409), `RATE_LIMITED` (429), `INTERNAL_ERROR` (500).
+
+### Static File Serving
+
+In production, `server.ts` serves the built frontend from `./frontend/dist` using Hono's `serveStatic` middleware. A SPA fallback serves `index.html` for any unmatched GET requests so that client-side routing works correctly. The server listens on port `3737` by default (configurable via the `PORT` environment variable).
 
 ## API Endpoints
 

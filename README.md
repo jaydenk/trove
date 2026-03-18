@@ -327,8 +327,9 @@ TroveLinkManager/
 │   │   │   ├── CollectionSidebar.tsx   # Left sidebar with collections, archive, and tags
 │   │   │   ├── CollectionManager.tsx   # Settings view for CRUD management of collections
 │   │   │   ├── SearchBar.tsx           # Debounced search input with Cmd+K shortcut
-│   │   │   ├── LinkCard.tsx            # Link list item with favicon, title, domain, tags
-│   │   │   ├── LinkDetail.tsx          # Right-side detail panel with editing and actions
+│   │   │   ├── LinkCard.tsx            # Link list item with favicon, title, domain, tags, plugin actions
+│   │   │   ├── LinkDetail.tsx          # Right-side detail panel with editing, plugin actions, and history
+│   │   │   ├── PluginSettings.tsx      # Plugin configuration screen with per-user settings
 │   │   │   └── AddLinkModal.tsx        # Modal for adding links with extraction preview
 │   │   ├── App.tsx           # Root component with three-column layout
 │   │   ├── main.tsx

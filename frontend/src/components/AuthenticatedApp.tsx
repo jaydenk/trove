@@ -4,6 +4,7 @@ import { useCollections } from "../hooks/useCollections";
 import { usePlugins } from "../hooks/usePlugins";
 import CollectionSidebar from "./CollectionSidebar";
 import CollectionManager from "./CollectionManager";
+import PluginSettings from "./PluginSettings";
 import LinkCard from "./LinkCard";
 import LinkDetail from "./LinkDetail";
 import SearchBar from "./SearchBar";
@@ -48,6 +49,7 @@ export default function AuthenticatedApp({
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [showCollectionManager, setShowCollectionManager] = useState(false);
+  const [showPluginSettings, setShowPluginSettings] = useState(false);
   const { collections, refetch: refetchCollections } = useCollections();
   const { plugins, refetch: refetchPlugins } = usePlugins();
 
@@ -109,7 +111,14 @@ export default function AuthenticatedApp({
         onSelectCollection={handleSelectCollection}
         selectedTag={selectedTag}
         onSelectTag={handleSelectTag}
-        onManageCollections={() => setShowCollectionManager(true)}
+        onManageCollections={() => {
+          setShowCollectionManager(true);
+          setShowPluginSettings(false);
+        }}
+        onManagePlugins={() => {
+          setShowPluginSettings(true);
+          setShowCollectionManager(false);
+        }}
       />
 
       {showCollectionManager ? (
@@ -117,6 +126,13 @@ export default function AuthenticatedApp({
           collections={collections}
           onRefresh={refetchCollections}
           onClose={() => setShowCollectionManager(false)}
+        />
+      ) : showPluginSettings ? (
+        <PluginSettings
+          onClose={() => {
+            setShowPluginSettings(false);
+            refetchPlugins();
+          }}
         />
       ) : (
         <div className="flex flex-1 flex-col min-w-0">

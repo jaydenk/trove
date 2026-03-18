@@ -7,6 +7,7 @@ export interface CollectionSidebarProps {
   selectedTag: string | null;
   onSelectTag: (tag: string | null) => void;
   onManageCollections?: () => void;
+  onManagePlugins?: () => void;
 }
 
 export default function CollectionSidebar({
@@ -15,6 +16,7 @@ export default function CollectionSidebar({
   selectedTag,
   onSelectTag,
   onManageCollections,
+  onManagePlugins,
 }: CollectionSidebarProps) {
   const { collections, isLoading: collectionsLoading } = useCollections();
   const { tags, isLoading: tagsLoading } = useTags();
@@ -149,6 +151,21 @@ export default function CollectionSidebar({
             ))
           )}
         </nav>
+
+        {/* Plugins section */}
+        {onManagePlugins && (
+          <>
+            <div className="my-3 border-t border-border dark:border-dark-border" />
+            <button
+              type="button"
+              onClick={onManagePlugins}
+              className={`${itemBase} ${itemIdle}`}
+            >
+              <span className="w-5 text-center">🔌</span>
+              <span className="flex-1 truncate text-left">Plugins</span>
+            </button>
+          </>
+        )}
       </div>
     </aside>
   );

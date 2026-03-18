@@ -73,6 +73,9 @@ TroveLinkManager/
 │   │   ├── collections.ts    # Collection CRUD routes
 │   │   ├── tags.ts           # Tag CRUD routes
 │   │   └── __tests__/        # Route-level tests
+│   ├── services/
+│   │   ├── extractor.ts       # Content extraction (Readability + OG fallback)
+│   │   └── __tests__/         # Service-level tests
 │   ├── seed.ts               # CLI script to create the first admin user
 │   └── db/
 │       ├── connection.ts     # SQLite connection (singleton + test helper)
@@ -108,6 +111,17 @@ Trove uses SQLite via Bun's built-in `bun:sqlite` driver with WAL mode and forei
 - **plugin_config** — Per-user plugin settings
 
 Set `TROVE_DB_PATH` in your `.env` to configure the database file location.
+
+## Content Extraction
+
+When a link is created, Trove asynchronously fetches the page and extracts readable content using [Mozilla Readability](https://github.com/mozilla/readability). If Readability cannot parse the page (e.g. minimal HTML without article structure), it falls back to OpenGraph meta tags (`og:title`, `og:description`, `og:image`).
+
+Favicons are resolved via Google's favicon service. Extracted content is truncated to a configurable maximum length.
+
+| Environment Variable               | Default | Description                                      |
+| ---------------------------------- | ------- | ------------------------------------------------ |
+| `TROVE_EXTRACTION_TIMEOUT_MS`      | 10000   | Fetch timeout in milliseconds                    |
+| `TROVE_MAX_CONTENT_LENGTH_CHARS`   | 50000   | Maximum character length for stored page content  |
 
 ## Authentication and Middleware
 

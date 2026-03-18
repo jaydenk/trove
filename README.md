@@ -101,8 +101,9 @@ TroveLinkManager/
 │   │   │   ├── CollectionSidebar.tsx # Left sidebar with collections, archive, and tags
 │   │   │   ├── SearchBar.tsx         # Debounced search input with Cmd+K shortcut
 │   │   │   ├── LinkCard.tsx          # Link list item with favicon, title, domain, tags
+│   │   │   ├── LinkDetail.tsx        # Right-side detail panel with editing and actions
 │   │   │   └── AddLinkModal.tsx      # Modal for adding links with extraction preview
-│   │   ├── App.tsx          # Root component with sidebar layout, add modal, and auth gating
+│   │   ├── App.tsx          # Root component with three-column layout (sidebar, list, detail panel)
 │   │   ├── main.tsx
 │   │   └── index.css
 │   ├── index.html

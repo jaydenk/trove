@@ -5,6 +5,7 @@ import { useCollections } from "./hooks/useCollections";
 import LoginScreen from "./components/LoginScreen";
 import CollectionSidebar from "./components/CollectionSidebar";
 import LinkCard from "./components/LinkCard";
+import LinkDetail from "./components/LinkDetail";
 import SearchBar from "./components/SearchBar";
 import AddLinkModal from "./components/AddLinkModal";
 
@@ -249,6 +250,18 @@ export default function App() {
           </div>
         )}
       </div>
+
+      {selectedLinkId && (
+        <LinkDetail
+          linkId={selectedLinkId}
+          collections={collections}
+          onClose={() => setSelectedLinkId(null)}
+          onUpdated={() => {
+            refetchLinks();
+            refetchCollections();
+          }}
+        />
+      )}
 
       <AddLinkModal
         isOpen={isAddModalOpen}

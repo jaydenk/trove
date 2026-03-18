@@ -71,6 +71,7 @@ TroveLinkManager/
 │   │   ├── user.ts           # GET/PATCH /api/me — user profile
 │   │   ├── admin.ts          # Admin-only user management routes
 │   │   ├── collections.ts    # Collection CRUD routes
+│   │   ├── tags.ts           # Tag CRUD routes
 │   │   └── __tests__/        # Route-level tests
 │   ├── seed.ts               # CLI script to create the first admin user
 │   └── db/
@@ -178,6 +179,15 @@ Error codes: `NOT_FOUND` (404), `UNAUTHORIZED` (401), `FORBIDDEN` (403), `VALIDA
 | POST   | `/api/collections`        | Yes  | Create collection (name required, icon/colour optional)  |
 | PATCH  | `/api/collections/:id`    | Yes  | Update collection name, icon, or colour                  |
 | DELETE | `/api/collections/:id`    | Yes  | Delete collection (moves links to inbox first)           |
+
+### Tags
+
+| Method | Path              | Auth | Description                                       |
+| ------ | ----------------- | ---- | ------------------------------------------------- |
+| GET    | `/api/tags`       | Yes  | List tags with link counts                        |
+| POST   | `/api/tags`       | Yes  | Create tag (name required, unique per user)       |
+| PATCH  | `/api/tags/:id`   | Yes  | Rename tag                                        |
+| DELETE | `/api/tags/:id`   | Yes  | Delete tag (cascades removal from linked items)   |
 
 ## CI/CD
 

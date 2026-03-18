@@ -72,6 +72,7 @@ TroveLinkManager/
 │   │   ├── admin.ts          # Admin-only user management routes
 │   │   ├── collections.ts    # Collection CRUD routes
 │   │   ├── tags.ts           # Tag CRUD routes
+│   │   ├── links.ts          # Link CRUD, search, archive, extraction routes
 │   │   └── __tests__/        # Route-level tests
 │   ├── services/
 │   │   ├── extractor.ts       # Content extraction (Readability + OG fallback)
@@ -202,6 +203,41 @@ Error codes: `NOT_FOUND` (404), `UNAUTHORIZED` (401), `FORBIDDEN` (403), `VALIDA
 | POST   | `/api/tags`       | Yes  | Create tag (name required, unique per user)       |
 | PATCH  | `/api/tags/:id`   | Yes  | Rename tag                                        |
 | DELETE | `/api/tags/:id`   | Yes  | Delete tag (cascades removal from linked items)   |
+
+### Links
+
+| Method | Path                        | Auth | Description                                                              |
+| ------ | --------------------------- | ---- | ------------------------------------------------------------------------ |
+| GET    | `/api/links`                | Yes  | List links with pagination and filtering                                 |
+| POST   | `/api/links`                | Yes  | Create link (triggers async content extraction)                          |
+| GET    | `/api/links/:id`            | Yes  | Get a single link with tags and full content                             |
+| PATCH  | `/api/links/:id`            | Yes  | Update link title, collection, status, or replace tags                   |
+| DELETE | `/api/links/:id`            | Yes  | Delete link                                                              |
+| POST   | `/api/links/:id/archive`    | Yes  | Set link status to archived                                              |
+| POST   | `/api/links/:id/extract`    | Yes  | Retry content extraction                                                 |
+
+**GET /api/links query parameters:**
+
+| Parameter       | Default | Description                                      |
+| --------------- | ------- | ------------------------------------------------ |
+| `q`             | —       | Full-text search query (FTS5, returns snippets)  |
+| `collection_id` | —      | Filter by collection ID                          |
+| `tag`           | —       | Filter by tag name                               |
+| `domain`        | —       | Filter by domain                                 |
+| `status`        | —       | Filter by status (`saved`, `archived`)           |
+| `source`        | —       | Filter by source (`manual`, etc.)                |
+| `page`          | 1       | Page number                                      |
+| `limit`         | 50      | Results per page (max 200)                       |
+
+Response envelope:
+```json
+{
+  "data": [ ... ],
+  "pagination": { "page": 1, "limit": 50, "total": 123, "totalPages": 3 }
+}
+```
+
+**POST /api/links** accepts `{ url, title?, collectionId?, tags?: string[], source?, sourceFeed? }`. Returns 409 with `DUPLICATE_URL` if the URL already exists for the user.
 
 ## CI/CD
 

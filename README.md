@@ -72,6 +72,22 @@ TroveLinkManager/
 └── tsconfig.json
 ```
 
+## CI/CD
+
+### Continuous Integration
+
+Every push and pull request triggers the CI workflow (`.github/workflows/ci.yml`), which runs:
+
+- Backend type-checking (`bun run lint`)
+- Frontend type-checking (`npx tsc --noEmit`)
+- Tests (`bun test`)
+
+### Release
+
+Pushes to `main` trigger the release workflow (`.github/workflows/release.yml`), which builds and pushes a Docker image to the GitHub Container Registry at `ghcr.io/jaydenk/trovelinkmanager`.
+
+Images are tagged with `latest` and the short commit SHA.
+
 ## Licence
 
 Private — all rights reserved.

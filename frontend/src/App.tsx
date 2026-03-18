@@ -4,6 +4,28 @@ import { useLinks } from "./hooks/useLinks";
 import LoginScreen from "./components/LoginScreen";
 import CollectionSidebar from "./components/CollectionSidebar";
 import LinkCard from "./components/LinkCard";
+import SearchBar from "./components/SearchBar";
+
+/**
+ * Sanitise FTS snippet HTML — only allow <b> tags used by SQLite snippet().
+ * All other HTML is escaped to prevent XSS from stored content.
+ */
+function sanitiseSnippet(html: string): string {
+  // Temporarily replace <b> and </b> with placeholders
+  const safe = html
+    .replace(/<b>/gi, "\x00B_OPEN\x00")
+    .replace(/<\/b>/gi, "\x00B_CLOSE\x00");
+  // Escape everything else
+  const escaped = safe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+  // Restore <b> tags
+  return escaped
+    .replace(/\x00B_OPEN\x00/g, "<b>")
+    .replace(/\x00B_CLOSE\x00/g, "</b>");
+}
 
 export default function App() {
   const { user, isLoading, isAuthenticated, login, logout } = useAuth();
@@ -13,6 +35,7 @@ export default function App() {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [selectedLinkId, setSelectedLinkId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleSelectCollection = (id: string | null) => {
     setSelectedCollection(id);
@@ -28,7 +51,12 @@ export default function App() {
     setSelectedLinkId(null);
   };
 
+  const isSearching = searchQuery.trim().length > 0;
+
   const linkFilters = (() => {
+    if (isSearching) {
+      return { q: searchQuery.trim(), page };
+    }
     if (selectedCollection === "archive") {
       return { status: "archived", page };
     }
@@ -88,7 +116,15 @@ export default function App() {
       />
 
       <div className="flex flex-1 flex-col min-w-0">
-        <header className="border-b border-border dark:border-dark-border px-6 py-4 flex items-center justify-end shrink-0">
+        <header className="border-b border-border dark:border-dark-border px-6 py-4 flex items-center justify-between shrink-0">
+          <SearchBar
+            value={searchQuery}
+            onChange={(v) => {
+              setSearchQuery(v);
+              setPage(1);
+              setSelectedLinkId(null);
+            }}
+          />
           <div className="flex items-center gap-4">
             <span className="text-sm text-muted dark:text-dark-muted">
               {user?.name}
@@ -134,12 +170,23 @@ export default function App() {
           ) : (
             <div className="flex flex-col">
               {links.map((link) => (
-                <LinkCard
-                  key={link.id}
-                  link={link}
-                  isSelected={link.id === selectedLinkId}
-                  onClick={() => setSelectedLinkId(link.id)}
-                />
+                <div key={link.id}>
+                  <LinkCard
+                    link={link}
+                    isSelected={link.id === selectedLinkId}
+                    onClick={() => setSelectedLinkId(link.id)}
+                  />
+                  {isSearching && link.snippet && (
+                    <div className="px-4 pb-2 -mt-px border-b border-border dark:border-dark-border">
+                      <p
+                        className="pl-6 text-xs text-muted dark:text-dark-muted line-clamp-2 [&>b]:font-semibold [&>b]:text-neutral-700 dark:[&>b]:text-neutral-300"
+                        dangerouslySetInnerHTML={{
+                          __html: sanitiseSnippet(link.snippet),
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           )}

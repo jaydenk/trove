@@ -58,19 +58,43 @@ bun run dev:frontend
 
 ```
 TroveLinkManager/
-├── src/              # Backend source (Hono server)
-├── frontend/         # React + Vite frontend
+├── src/
+│   ├── lib/
+│   │   └── id.ts             # nanoid wrapper for ID generation
+│   └── db/
+│       ├── connection.ts     # SQLite connection (singleton + test helper)
+│       ├── schema.ts         # DDL migrations (WAL, FK, FTS5)
+│       ├── queries/
+│       │   ├── users.ts      # User CRUD + token lookup
+│       │   ├── collections.ts# Collection CRUD + default seeding
+│       │   ├── links.ts      # Link CRUD, FTS search, pagination
+│       │   └── tags.ts       # Tag CRUD + link tagging
+│       └── __tests__/        # Database layer tests
+├── frontend/                 # React + Vite frontend
 │   ├── src/
 │   │   ├── App.tsx
 │   │   ├── main.tsx
 │   │   └── index.css
 │   ├── index.html
 │   └── vite.config.ts
-├── data/             # SQLite database (gitignored)
+├── data/                     # SQLite database (gitignored)
 ├── env.example
 ├── package.json
 └── tsconfig.json
 ```
+
+## Database
+
+Trove uses SQLite via Bun's built-in `bun:sqlite` driver with WAL mode and foreign keys enabled. The schema includes:
+
+- **users** — API token-based authentication
+- **links** — Saved URLs with metadata, FTS5 full-text search
+- **collections** — User-defined groupings (5 defaults seeded per user)
+- **tags** / **link_tags** — Many-to-many tagging
+- **link_actions** — Plugin action log
+- **plugin_config** — Per-user plugin settings
+
+Set `TROVE_DB_PATH` in your `.env` to configure the database file location.
 
 ## CI/CD
 

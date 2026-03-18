@@ -39,6 +39,38 @@ export function listUsers(db: Database): User[] {
   return db.query<User, []>("SELECT * FROM users").all();
 }
 
+export function findById(db: Database, id: string): User | null {
+  return (
+    db.query<User, [string]>("SELECT * FROM users WHERE id = ?").get(id) ??
+    null
+  );
+}
+
+export function updateUser(
+  db: Database,
+  id: string,
+  input: { name?: string; email?: string }
+): User {
+  const existing = db
+    .query<User, [string]>("SELECT * FROM users WHERE id = ?")
+    .get(id);
+
+  if (!existing) {
+    throw new Error("User not found");
+  }
+
+  const name = input.name ?? existing.name;
+  const email = input.email !== undefined ? input.email : existing.email;
+
+  db.query("UPDATE users SET name = ?, email = ? WHERE id = ?").run(
+    name,
+    email,
+    id
+  );
+
+  return db.query<User, [string]>("SELECT * FROM users WHERE id = ?").get(id)!;
+}
+
 export function deleteUser(db: Database, id: string): void {
   db.query("DELETE FROM users WHERE id = ?").run(id);
 }

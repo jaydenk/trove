@@ -66,6 +66,11 @@ TroveLinkManager/
 │   │   ├── auth.ts           # Bearer token authentication middleware
 │   │   ├── logger.ts         # Pino-based request logging middleware
 │   │   └── rateLimit.ts      # In-memory sliding-window rate limiter
+│   ├── routes/
+│   │   ├── health.ts         # GET /health — status and link count
+│   │   ├── user.ts           # GET/PATCH /api/me — user profile
+│   │   ├── admin.ts          # Admin-only user management routes
+│   │   └── __tests__/        # Route-level tests
 │   ├── seed.ts               # CLI script to create the first admin user
 │   └── db/
 │       ├── connection.ts     # SQLite connection (singleton + test helper)
@@ -140,6 +145,29 @@ The API returns structured JSON errors:
 ```
 
 Error codes: `NOT_FOUND` (404), `UNAUTHORIZED` (401), `FORBIDDEN` (403), `VALIDATION_ERROR` (400), `DUPLICATE_URL` (409), `RATE_LIMITED` (429).
+
+## API Endpoints
+
+### Health
+
+| Method | Path      | Auth | Description                    |
+| ------ | --------- | ---- | ------------------------------ |
+| GET    | `/health` | No   | Returns status and link count  |
+
+### User Profile
+
+| Method | Path      | Auth | Description            |
+| ------ | --------- | ---- | ---------------------- |
+| GET    | `/api/me` | Yes  | Get current user       |
+| PATCH  | `/api/me` | Yes  | Update name and/or email |
+
+### Admin (requires admin)
+
+| Method | Path                    | Auth  | Description                              |
+| ------ | ----------------------- | ----- | ---------------------------------------- |
+| GET    | `/api/admin/users`      | Admin | List all users (tokens excluded)         |
+| POST   | `/api/admin/users`      | Admin | Create user (returns token once)         |
+| DELETE  | `/api/admin/users/:id` | Admin | Delete user and all related data         |
 
 ## CI/CD
 

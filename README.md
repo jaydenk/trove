@@ -11,6 +11,7 @@ Trove is a self-hosted personal link library for saving, organising, and searchi
 - **Archive support** to keep links without cluttering your active view
 - **Filtering** by collection, tag, domain, status, or source
 - **Plugin system** for extending Trove with external services (Readwise Reader, Things, n8n)
+- **MCP server** for AI assistant integration (search, browse, save links via Claude, etc.)
 - **Multi-user** with token-based authentication and admin management
 - **Rate limiting** on write operations (60 requests/minute per token)
 - **Structured logging** via Pino with pretty-printing in development
@@ -120,6 +121,7 @@ Trove is a self-hosted personal link library for saving, organising, and searchi
 | `TROVE_DB_PATH`                  | Yes      | `./data/trove.db`| Path to the SQLite database file                  |
 | `PORT`                           | No       | `3737`           | Server listening port                             |
 | `TROVE_ADMIN_TOKEN`              | Seed     | —                | Token for the admin user (used by `bun run seed`) |
+| `TROVE_API_TOKEN`                | MCP      | —                | User API token for the MCP server process         |
 | `TROVE_EXTRACTION_TIMEOUT_MS`    | No       | `10000`          | Content extraction fetch timeout in milliseconds  |
 | `TROVE_MAX_CONTENT_LENGTH_CHARS` | No       | `50000`          | Maximum character length for stored page content  |
 
@@ -324,6 +326,50 @@ All fields except `url` are optional. The `collection` field matches by name —
 }
 ```
 
+## MCP Server
+
+Trove includes a [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server that lets AI assistants (Claude, etc.) interact with your link library directly. The server runs as a standalone process communicating over stdio.
+
+### Setup
+
+Set the `TROVE_API_TOKEN` environment variable to a valid user API token, then start the server:
+
+```bash
+TROVE_API_TOKEN=your-token TROVE_DB_PATH=./data/trove.db bun run mcp
+```
+
+### Available Tools
+
+| Tool               | Description                                                |
+| ------------------ | ---------------------------------------------------------- |
+| `search_links`     | Full-text search across saved links                        |
+| `get_link`         | Get a single link by ID with full content and metadata     |
+| `list_links`       | Browse links with filters (collection, tag, domain)        |
+| `list_collections` | List all collections with link counts                      |
+| `list_tags`        | List all tags with link counts                             |
+| `add_link`         | Save a new link with optional collection and tags          |
+| `execute_action`   | Run a plugin action on a link (e.g. send to Reader/Things) |
+
+### Claude Desktop Configuration
+
+Add the following to your Claude Desktop MCP settings (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "trove": {
+      "command": "bun",
+      "args": ["run", "mcp"],
+      "cwd": "/path/to/TroveLinkManager",
+      "env": {
+        "TROVE_API_TOKEN": "your-token",
+        "TROVE_DB_PATH": "/path/to/TroveLinkManager/data/trove.db"
+      }
+    }
+  }
+}
+```
+
 ## Capture Methods
 
 Trove supports several ways to save links:
@@ -332,6 +378,7 @@ Trove supports several ways to save links:
 - **API** — `POST /api/links` with `{ "url": "..." }` from any HTTP client, script, or automation tool.
 - **n8n Webhook** — pipe links from n8n workflows via `POST /api/plugins/n8n/webhook` (see [n8n Webhook plugin](#n8n-webhook) above).
 - **iOS Shortcut** — save links directly from the iOS Share Sheet. See the [iOS Shortcut setup guide](docs/ios-shortcut.md) for step-by-step instructions.
+- **MCP** — AI assistants can search, browse, and save links via the MCP server (see [MCP Server](#mcp-server) above).
 
 ## CI/CD
 
@@ -378,6 +425,8 @@ TroveLinkManager/
 │   │   ├── things.ts         # Things plugin (create tasks via URL scheme)
 │   │   ├── n8n.ts            # n8n webhook ingest plugin (receive links from n8n workflows)
 │   │   └── __tests__/        # Plugin-level tests
+│   ├── mcp/
+│   │   └── server.ts         # MCP server (stdio transport, 7 tools)
 │   ├── services/
 │   │   ├── extractor.ts      # Content extraction (Readability + OG fallback)
 │   │   └── __tests__/        # Service-level tests

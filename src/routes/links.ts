@@ -12,6 +12,7 @@ import {
 } from "../db/queries/links";
 import { getOrCreateTag, addTagToLink } from "../db/queries/tags";
 import { extractAndUpdate } from "../services/extractor";
+import { listActionsForLink } from "../db/queries/linkActions";
 import {
   NotFoundError,
   ValidationError,
@@ -118,7 +119,8 @@ links.get("/api/links/:id", (c) => {
     throw new NotFoundError("Link not found");
   }
 
-  return c.json(link);
+  const actions = listActionsForLink(db, link.id);
+  return c.json({ ...link, actions });
 });
 
 links.patch("/api/links/:id", async (c) => {

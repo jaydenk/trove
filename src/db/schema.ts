@@ -1,9 +1,6 @@
 import { Database } from "bun:sqlite";
 
 export function runMigrations(db: Database): void {
-  db.exec("PRAGMA journal_mode=WAL;");
-  db.exec("PRAGMA foreign_keys=ON;");
-
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id         TEXT PRIMARY KEY,

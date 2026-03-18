@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach } from "bun:test";
+import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import { Database } from "bun:sqlite";
 import { createTestDb } from "../connection";
 import { createUser, findByToken, listUsers, deleteUser } from "../queries/users";
@@ -8,6 +8,10 @@ describe("users", () => {
 
   beforeEach(() => {
     db = createTestDb();
+  });
+
+  afterEach(() => {
+    db.close();
   });
 
   test("create user and find by token", () => {

@@ -14,12 +14,15 @@ export function getDb(): Database {
   }
 
   dbInstance = new Database(dbPath, { create: true });
+  dbInstance.exec("PRAGMA journal_mode=WAL;");
+  dbInstance.exec("PRAGMA foreign_keys=ON;");
   runMigrations(dbInstance);
   return dbInstance;
 }
 
 export function createTestDb(): Database {
   const db = new Database(":memory:");
+  db.exec("PRAGMA foreign_keys=ON;");
   runMigrations(db);
   return db;
 }

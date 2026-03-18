@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach } from "bun:test";
+import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import { Database } from "bun:sqlite";
 import { createTestDb } from "../connection";
 import { createUser } from "../queries/users";
@@ -26,6 +26,10 @@ describe("links", () => {
     seedDefaultCollections(db, userId);
     const collections = listCollections(db, userId);
     inboxId = collections.find((c) => c.name === "inbox")!.id;
+  });
+
+  afterEach(() => {
+    db.close();
   });
 
   test("create link returns pending extraction", () => {
@@ -128,6 +132,59 @@ describe("links", () => {
 
     const saved = listLinks(db, userId, { status: "saved" });
     expect(saved.data.length).toBe(0);
+  });
+
+  test("filter by tag name", () => {
+    const link1 = createLink(db, userId, {
+      url: "https://example.com/tagged",
+      title: "Tagged Link",
+    });
+    createLink(db, userId, {
+      url: "https://example.com/untagged",
+      title: "Untagged Link",
+    });
+
+    const tag = createTag(db, userId, "javascript");
+    addTagToLink(db, link1.id, tag.id);
+
+    const result = listLinks(db, userId, { tag: "javascript" });
+    expect(result.data.length).toBe(1);
+    expect(result.data[0].title).toBe("Tagged Link");
+  });
+
+  test("filter by domain", () => {
+    createLink(db, userId, {
+      url: "https://github.com/repo",
+      title: "GitHub Repo",
+    });
+    createLink(db, userId, {
+      url: "https://stackoverflow.com/question",
+      title: "SO Question",
+    });
+
+    const result = listLinks(db, userId, { domain: "github.com" });
+    expect(result.data.length).toBe(1);
+    expect(result.data[0].title).toBe("GitHub Repo");
+  });
+
+  test("filter by source", () => {
+    createLink(db, userId, {
+      url: "https://example.com/manual",
+      title: "Manual Link",
+    });
+    createLink(db, userId, {
+      url: "https://example.com/rss",
+      title: "RSS Link",
+      source: "rss",
+    });
+
+    const manualResult = listLinks(db, userId, { source: "manual" });
+    expect(manualResult.data.length).toBe(1);
+    expect(manualResult.data[0].title).toBe("Manual Link");
+
+    const rssResult = listLinks(db, userId, { source: "rss" });
+    expect(rssResult.data.length).toBe(1);
+    expect(rssResult.data[0].title).toBe("RSS Link");
   });
 
   test("FTS search returns results with snippets", () => {

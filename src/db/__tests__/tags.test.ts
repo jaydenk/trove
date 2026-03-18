@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach } from "bun:test";
+import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import { Database } from "bun:sqlite";
 import { createTestDb } from "../connection";
 import { createUser } from "../queries/users";
@@ -23,6 +23,10 @@ describe("tags", () => {
     const user = createUser(db, { name: "Alice", apiToken: "token-1" });
     userId = user.id;
     seedDefaultCollections(db, userId);
+  });
+
+  afterEach(() => {
+    db.close();
   });
 
   test("create tag", () => {

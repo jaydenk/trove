@@ -111,6 +111,7 @@ Trove is a self-hosted personal link library for saving, organising, and searchi
 | `bun run test`         | Run tests                          |
 | `bun run lint`         | Type-check with TypeScript         |
 | `bun run start`        | Start backend (production)         |
+| `bun run mcp`          | Start MCP server (stdio transport) |
 
 ## Environment Variables
 

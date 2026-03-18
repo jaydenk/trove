@@ -494,7 +494,7 @@ export default function LinkDetail({
 
   if (isLoading) {
     return (
-      <aside className="w-96 shrink-0 border-l border-border dark:border-dark-border bg-card dark:bg-dark-card flex flex-col h-screen">
+      <aside className="fixed inset-0 z-30 lg:relative lg:inset-auto lg:z-auto lg:w-96 shrink-0 border-l border-border dark:border-dark-border bg-card dark:bg-dark-card flex flex-col h-screen">
         <div className="flex items-center justify-center flex-1">
           <Spinner className="h-5 w-5 text-muted dark:text-dark-muted" />
         </div>
@@ -504,15 +504,26 @@ export default function LinkDetail({
 
   if (error || !link) {
     return (
-      <aside className="w-96 shrink-0 border-l border-border dark:border-dark-border bg-card dark:bg-dark-card flex flex-col h-screen">
+      <aside className="fixed inset-0 z-30 lg:relative lg:inset-auto lg:z-auto lg:w-96 shrink-0 border-l border-border dark:border-dark-border bg-card dark:bg-dark-card flex flex-col h-screen">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border dark:border-dark-border shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="lg:hidden inline-flex items-center gap-1 text-sm text-muted dark:text-dark-muted hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
+            aria-label="Back"
+          >
+            <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M17 10a.75.75 0 01-.75.75H5.612l4.158 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 111.04 1.08L5.612 9.25H16.25A.75.75 0 0117 10z" clipRule="evenodd" />
+            </svg>
+            Back
+          </button>
           <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
             Link Details
           </span>
           <button
             type="button"
             onClick={onClose}
-            className="text-muted dark:text-dark-muted hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
+            className="hidden lg:block text-muted dark:text-dark-muted hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
             aria-label="Close panel"
           >
             <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -532,16 +543,27 @@ export default function LinkDetail({
   const currentTags = link.tags?.map((t) => t.name) ?? [];
 
   return (
-    <aside className="w-96 shrink-0 border-l border-border dark:border-dark-border bg-card dark:bg-dark-card flex flex-col h-screen">
+    <aside className="fixed inset-0 z-30 lg:relative lg:inset-auto lg:z-auto lg:w-96 shrink-0 border-l border-border dark:border-dark-border bg-card dark:bg-dark-card flex flex-col h-screen">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border dark:border-dark-border shrink-0">
+        <button
+          type="button"
+          onClick={onClose}
+          className="lg:hidden inline-flex items-center gap-1 text-sm text-muted dark:text-dark-muted hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
+          aria-label="Back"
+        >
+          <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M17 10a.75.75 0 01-.75.75H5.612l4.158 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 111.04 1.08L5.612 9.25H16.25A.75.75 0 0117 10z" clipRule="evenodd" />
+          </svg>
+          Back
+        </button>
         <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
           Link Details
         </span>
         <button
           type="button"
           onClick={onClose}
-          className="text-muted dark:text-dark-muted hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
+          className="hidden lg:block text-muted dark:text-dark-muted hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
           aria-label="Close panel"
         >
           <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">

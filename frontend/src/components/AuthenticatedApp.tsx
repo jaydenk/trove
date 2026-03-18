@@ -246,6 +246,7 @@ export default function AuthenticatedApp({
         <LinkDetail
           linkId={selectedLinkId}
           collections={collections}
+          plugins={plugins}
           onClose={() => setSelectedLinkId(null)}
           onUpdated={() => {
             refetchLinks();

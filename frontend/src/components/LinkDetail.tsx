@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { api, ApiError } from "../api";
-import type { Link, Collection } from "../api";
+import type { Link, Collection, PluginInfo } from "../api";
 
 // ---------------------------------------------------------------------------
 // Spinner
@@ -217,12 +217,104 @@ function DeleteConfirmation({
 }
 
 // ---------------------------------------------------------------------------
+// Relative time helper
+// ---------------------------------------------------------------------------
+
+function relativeTime(dateString: string): string {
+  const now = Date.now();
+  const normalised = dateString.includes("T") ? dateString : dateString.replace(" ", "T") + "Z";
+  const then = new Date(normalised).getTime();
+  const diffSeconds = Math.max(0, Math.floor((now - then) / 1000));
+
+  if (diffSeconds < 60) return "just now";
+  const minutes = Math.floor(diffSeconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+  const years = Math.floor(months / 12);
+  return `${years}y ago`;
+}
+
+// ---------------------------------------------------------------------------
+// Plugin action button for the detail panel
+// ---------------------------------------------------------------------------
+
+function PluginActionRow({
+  link,
+  plugin,
+  onExecuted,
+}: {
+  link: Link;
+  plugin: PluginInfo;
+  onExecuted: () => void;
+}) {
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [feedback, setFeedback] = useState<string | null>(null);
+
+  async function handleExecute() {
+    if (status === "loading") return;
+    setStatus("loading");
+    setFeedback(null);
+    try {
+      const result = await api.plugins.executeAction(link.id, plugin.id);
+      if (result.type === "redirect" && result.url) {
+        window.open(result.url, "_blank", "noopener,noreferrer");
+        setFeedback("Opened in new tab");
+      } else if (result.type === "success") {
+        setFeedback(result.message ?? "Done");
+      } else {
+        setFeedback(result.message ?? "Action failed");
+      }
+      setStatus(result.type === "error" ? "error" : "success");
+      onExecuted();
+    } catch {
+      setStatus("error");
+      setFeedback("Action failed");
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={handleExecute}
+        disabled={status === "loading"}
+        className="flex-1 inline-flex items-center justify-center gap-2 rounded-md border border-border dark:border-dark-border text-neutral-700 dark:text-neutral-300 px-3 py-2 text-sm hover:bg-hover dark:hover:bg-dark-hover disabled:opacity-50 transition-colors"
+      >
+        {status === "loading" ? (
+          <Spinner className="h-3.5 w-3.5" />
+        ) : (
+          <span>{plugin.icon}</span>
+        )}
+        <span>{plugin.name}</span>
+      </button>
+      {feedback && (
+        <span
+          className={`text-xs shrink-0 ${
+            status === "error"
+              ? "text-red-600 dark:text-red-400"
+              : "text-green-600 dark:text-green-400"
+          }`}
+        >
+          {feedback}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // LinkDetail
 // ---------------------------------------------------------------------------
 
 export interface LinkDetailProps {
   linkId: string;
   collections: Collection[];
+  plugins?: PluginInfo[];
   onClose: () => void;
   onUpdated: () => void;
 }
@@ -230,6 +322,7 @@ export interface LinkDetailProps {
 export default function LinkDetail({
   linkId,
   collections,
+  plugins,
   onClose,
   onUpdated,
 }: LinkDetailProps) {
@@ -634,6 +727,86 @@ export default function LinkDetail({
             </span>
           </div>
         </div>
+
+        {/* Plugin actions */}
+        {(() => {
+          const executablePlugins = plugins?.filter(
+            (p) => p.hasExecute && p.isConfigured,
+          );
+          if (!executablePlugins || executablePlugins.length === 0) return null;
+          return (
+            <>
+              <div className="border-t border-border dark:border-dark-border" />
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted dark:text-dark-muted">
+                  Actions
+                </p>
+                <div className="space-y-1.5">
+                  {executablePlugins.map((p) => (
+                    <PluginActionRow
+                      key={p.id}
+                      link={link}
+                      plugin={p}
+                      onExecuted={fetchLink}
+                    />
+                  ))}
+                </div>
+              </div>
+            </>
+          );
+        })()}
+
+        {/* Action history */}
+        {(() => {
+          const actions = link.actions;
+          return (
+            <>
+              <div className="border-t border-border dark:border-dark-border" />
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted dark:text-dark-muted">
+                  Action History
+                </p>
+                {!actions || actions.length === 0 ? (
+                  <p className="text-xs text-muted dark:text-dark-muted">
+                    No actions yet
+                  </p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {actions.map((action) => {
+                      const matchedPlugin = plugins?.find(
+                        (p) => p.id === action.pluginId,
+                      );
+                      const isSuccess = action.status === "success";
+                      return (
+                        <div
+                          key={action.id}
+                          className="flex items-start gap-2 text-xs"
+                        >
+                          <span className="shrink-0 mt-0.5">
+                            {matchedPlugin?.icon ?? "🔌"}
+                          </span>
+                          <span
+                            className={`shrink-0 mt-1 h-2 w-2 rounded-full ${
+                              isSuccess
+                                ? "bg-green-500"
+                                : "bg-red-500"
+                            }`}
+                          />
+                          <span className="flex-1 text-neutral-700 dark:text-neutral-300 break-words">
+                            {action.message ?? (isSuccess ? "Success" : "Failed")}
+                          </span>
+                          <span className="shrink-0 text-muted dark:text-dark-muted whitespace-nowrap">
+                            {relativeTime(action.createdAt)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </>
+          );
+        })()}
       </div>
 
       {/* Footer actions */}

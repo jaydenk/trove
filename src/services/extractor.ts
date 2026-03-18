@@ -46,6 +46,27 @@ function getMetaContent(doc: Document, property: string): string | null {
   return meta?.getAttribute("content") ?? null;
 }
 
+/**
+ * Remove noisy elements from the DOM before Readability processes it.
+ * This strips navigation, footers, code blocks, and other chrome that
+ * pollutes extracted text on marketing/documentation pages.
+ */
+function preCleanDom(doc: Document): void {
+  const noisySelectors = [
+    "script", "style", "noscript", "iframe",
+    "nav", "footer", "header",
+    "aside", "[role='navigation']", "[role='banner']", "[role='contentinfo']",
+    "pre", "code",           // code blocks add noise for a link library
+    ".hljs", ".highlight",   // common code highlight wrappers
+    "svg",                   // inline SVGs (icons, illustrations)
+  ];
+  for (const selector of noisySelectors) {
+    for (const el of doc.querySelectorAll(selector)) {
+      el.remove();
+    }
+  }
+}
+
 export async function extractContent(url: string): Promise<ExtractionResult> {
   const timeoutMs = getTimeoutMs();
   const maxContentLength = getMaxContentLength();
@@ -72,7 +93,16 @@ export async function extractContent(url: string): Promise<ExtractionResult> {
   const dom = new JSDOM(html, { url });
   const doc = dom.window.document;
 
-  // Try Readability first
+  // Extract OG tags BEFORE cleaning the DOM (they live in <head>)
+  const ogTitle = getMetaContent(doc, "og:title");
+  const ogDescription = getMetaContent(doc, "og:description");
+  const ogImage = getMetaContent(doc, "og:image");
+  const pageTitle = doc.title;
+
+  // Pre-clean the DOM to remove noisy elements
+  preCleanDom(doc);
+
+  // Try Readability on the cleaned DOM
   const reader = new Readability(doc);
   const article = reader.parse();
 
@@ -82,18 +112,15 @@ export async function extractContent(url: string): Promise<ExtractionResult> {
   let imageUrl: string | null;
 
   if (article) {
-    title = article.title || getMetaContent(doc, "og:title") || domain;
-    description =
-      article.excerpt || getMetaContent(doc, "og:description") || "";
-    // Use textContent (plain text) and strip any residual HTML tags
+    title = article.title || ogTitle || domain;
+    description = article.excerpt || ogDescription || "";
     content = stripHtml(article.textContent || "");
-    imageUrl = getMetaContent(doc, "og:image");
+    imageUrl = ogImage;
   } else {
-    // Fall back to OG meta tags
-    title = getMetaContent(doc, "og:title") || doc.title || domain;
-    description = getMetaContent(doc, "og:description") || "";
+    title = ogTitle || pageTitle || domain;
+    description = ogDescription || "";
     content = "";
-    imageUrl = getMetaContent(doc, "og:image");
+    imageUrl = ogImage;
   }
 
   // Truncate content

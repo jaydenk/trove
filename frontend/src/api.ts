@@ -331,4 +331,41 @@ export const api = {
     delete: (id: string) =>
       request<void>(`/tags/${id}`, { method: "DELETE" }),
   },
+
+  importExport: {
+    import: (format: "html" | "csv" | "json", data: string) =>
+      request<{ imported: number; skipped: number; errors: string[] }>(
+        "/import",
+        {
+          method: "POST",
+          body: JSON.stringify({ format, data }),
+        },
+      ),
+  },
 };
+
+// ---------------------------------------------------------------------------
+// Download helper for export endpoints
+// ---------------------------------------------------------------------------
+
+export async function downloadExport(
+  path: string,
+  filename: string,
+): Promise<void> {
+  const token = getToken();
+  const res = await fetch(`${BASE}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!res.ok) {
+    throw new ApiError(res.status, "EXPORT_ERROR", "Export download failed");
+  }
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}

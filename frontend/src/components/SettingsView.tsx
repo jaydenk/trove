@@ -1,6 +1,7 @@
 import { useState } from "react";
 import CollectionManager from "./CollectionManager";
 import PluginSettings from "./PluginSettings";
+import ImportExportSettings from "./ImportExportSettings";
 import type { Collection } from "../api";
 
 interface SettingsViewProps {
@@ -10,7 +11,7 @@ interface SettingsViewProps {
   onClose: () => void;
 }
 
-type SettingsTab = "collections" | "plugins";
+type SettingsTab = "collections" | "plugins" | "import-export";
 
 export default function SettingsView({
   collections,
@@ -71,6 +72,13 @@ export default function SettingsView({
           >
             Plugins
           </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("import-export")}
+            className={`${tabBase} ${activeTab === "import-export" ? tabActive : tabIdle}`}
+          >
+            Import / Export
+          </button>
         </div>
       </div>
 
@@ -82,10 +90,14 @@ export default function SettingsView({
           onClose={onClose}
           hideHeader
         />
-      ) : (
+      ) : activeTab === "plugins" ? (
         <PluginSettings
           onClose={onClose}
           hideHeader
+        />
+      ) : (
+        <ImportExportSettings
+          onImportComplete={onRefreshCollections}
         />
       )}
     </div>

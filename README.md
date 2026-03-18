@@ -175,6 +175,7 @@ All API routes (under `/api/*`) require a `Authorization: Bearer <token>` header
 | DELETE | `/api/links/:id`         | Yes  | Delete link                                            |
 | POST   | `/api/links/:id/archive` | Yes  | Set link status to archived                            |
 | POST   | `/api/links/:id/extract` | Yes  | Retry content extraction                               |
+| POST   | `/api/links/:id/actions/:pluginId` | Yes | Execute a plugin action on a link              |
 
 **GET /api/links query parameters:**
 
@@ -190,6 +191,21 @@ All API routes (under `/api/*`) require a `Authorization: Bearer <token>` header
 | `limit`         | 50      | Results per page (max 200)                      |
 
 **POST /api/links** accepts `{ url, title?, collectionId?, tags?: string[], source?, sourceFeed? }`. Returns `409` with `DUPLICATE_URL` if the URL already exists for the user.
+
+### Plugins
+
+| Method | Path                              | Auth | Description                                      |
+| ------ | --------------------------------- | ---- | ------------------------------------------------ |
+| GET    | `/api/plugins`                    | Yes  | List registered plugins with config status       |
+| GET    | `/api/plugins/:id/config`         | Yes  | Get plugin config and schema for current user    |
+| PUT    | `/api/plugins/:id/config`         | Yes  | Set plugin config values                         |
+| POST   | `/api/plugins/:id/webhook`        | Yes  | Inbound webhook for ingest plugins (e.g. n8n)   |
+
+**PUT /api/plugins/:id/config** accepts a flat `Record<string, string>` body. Returns the updated config.
+
+**POST /api/plugins/:id/webhook** accepts the plugin-specific ingest payload. Returns `{ created, skipped, errors }`.
+
+**POST /api/links/:id/actions/:pluginId** executes the plugin's action on the specified link and records the result. Returns the `PluginResult` (`{ type: "success"|"redirect"|"error", message|url }`).
 
 **Response envelope:**
 
@@ -272,6 +288,7 @@ TroveLinkManager/
 │   │   ├── collections.ts    # Collection CRUD routes
 │   │   ├── tags.ts           # Tag CRUD routes
 │   │   ├── links.ts          # Link CRUD, search, archive, extraction routes
+│   │   ├── plugins.ts        # Plugin config, actions, and webhook routes
 │   │   └── __tests__/        # Route-level tests
 │   ├── plugins/
 │   │   ├── types.ts          # Plugin system type definitions (TrovePlugin, PluginInfo, etc.)
@@ -292,7 +309,9 @@ TroveLinkManager/
 │           ├── users.ts      # User CRUD + token lookup
 │           ├── collections.ts# Collection CRUD + default seeding
 │           ├── links.ts      # Link CRUD, FTS search, pagination
-│           └── tags.ts       # Tag CRUD + link tagging
+│           ├── tags.ts       # Tag CRUD + link tagging
+│           ├── pluginConfig.ts  # Per-user plugin configuration storage
+│           └── linkActions.ts   # Plugin action log (record + list)
 ├── frontend/                 # React + Vite frontend
 │   ├── src/
 │   │   ├── api.ts            # Typed API client with fetch wrapper

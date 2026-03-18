@@ -1,0 +1,13 @@
+services:
+  trove:
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.trove.rule=Host(`trove.${HOSTNAME}`)"
+      - "traefik.http.routers.trove.entrypoints=web-secure"
+      - "traefik.http.routers.trove.tls.certresolver=myresolver"
+      - "traefik.http.services.trove.loadbalancer.server.port=3737"
+networks:
+  proxy:
+    external: true

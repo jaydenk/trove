@@ -1,0 +1,18 @@
+services:
+  trove:
+    build: .
+    image: ghcr.io/jaydenk/trove:latest
+    container_name: trove
+    restart: unless-stopped
+    ports:
+      - "3737:3737"
+    volumes:
+      - ./data:/app/data
+      - /etc/localtime:/etc/localtime:ro
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3737/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

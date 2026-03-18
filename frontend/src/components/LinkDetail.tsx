@@ -771,31 +771,29 @@ export default function LinkDetail({
                     No actions yet
                   </p>
                 ) : (
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     {actions.map((action) => {
                       const matchedPlugin = plugins?.find(
                         (p) => p.id === action.pluginId,
                       );
-                      const isSuccess = action.status === "success";
+                      const isSuccess = action.status === "success" || action.status === "redirect";
+                      const pluginName = matchedPlugin?.name ?? action.pluginId;
+                      const statusLabel = isSuccess ? "Sent" : "Failed";
                       return (
                         <div
                           key={action.id}
-                          className="flex items-start gap-2 text-xs"
+                          className="flex items-center gap-2 text-xs py-0.5"
+                          title={action.message ?? undefined}
                         >
-                          <span className="shrink-0 mt-0.5">
-                            {matchedPlugin?.icon ?? "🔌"}
-                          </span>
                           <span
-                            className={`shrink-0 mt-1 h-2 w-2 rounded-full ${
-                              isSuccess
-                                ? "bg-green-500"
-                                : "bg-red-500"
+                            className={`shrink-0 h-1.5 w-1.5 rounded-full ${
+                              isSuccess ? "bg-green-500" : "bg-red-500"
                             }`}
                           />
-                          <span className="flex-1 text-neutral-700 dark:text-neutral-300 break-words">
-                            {action.message ?? (isSuccess ? "Success" : "Failed")}
+                          <span className="text-neutral-700 dark:text-neutral-300">
+                            {statusLabel} to {pluginName}
                           </span>
-                          <span className="shrink-0 text-muted dark:text-dark-muted whitespace-nowrap">
+                          <span className="text-muted dark:text-dark-muted">
                             {relativeTime(action.createdAt)}
                           </span>
                         </div>

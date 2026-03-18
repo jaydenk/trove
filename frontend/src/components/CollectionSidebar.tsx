@@ -8,6 +8,7 @@ export interface CollectionSidebarProps {
   onSelectTag: (tag: string | null) => void;
   onManageCollections?: () => void;
   onManagePlugins?: () => void;
+  isSettingsView?: boolean; // true when collection manager or plugin settings is shown
 }
 
 export default function CollectionSidebar({
@@ -17,6 +18,7 @@ export default function CollectionSidebar({
   onSelectTag,
   onManageCollections,
   onManagePlugins,
+  isSettingsView = false,
 }: CollectionSidebarProps) {
   const { collections, isLoading: collectionsLoading } = useCollections();
   const { tags, isLoading: tagsLoading } = useTags();
@@ -66,7 +68,7 @@ export default function CollectionSidebar({
               onSelectCollection(null);
               onSelectTag(null);
             }}
-            className={`${itemBase} ${selectedCollection === null && selectedTag === null ? itemActive : itemIdle}`}
+            className={`${itemBase} ${!isSettingsView && selectedCollection === null && selectedTag === null ? itemActive : itemIdle}`}
           >
             <span className="w-5 text-center">{"*"}</span>
             <span className="flex-1 truncate text-left">All Links</span>
@@ -85,7 +87,7 @@ export default function CollectionSidebar({
                   onSelectCollection(c.id);
                   onSelectTag(null);
                 }}
-                className={`${itemBase} ${selectedCollection === c.id ? itemActive : itemIdle}`}
+                className={`${itemBase} ${!isSettingsView && selectedCollection === c.id ? itemActive : itemIdle}`}
               >
                 <span className="w-5 text-center">{c.icon ?? "📁"}</span>
                 <span className="flex-1 truncate text-left">{c.name}</span>
@@ -103,7 +105,7 @@ export default function CollectionSidebar({
               onSelectCollection("archive");
               onSelectTag(null);
             }}
-            className={`${itemBase} ${selectedCollection === "archive" ? itemActive : itemIdle}`}
+            className={`${itemBase} ${!isSettingsView && selectedCollection === "archive" ? itemActive : itemIdle}`}
           >
             <span className="w-5 text-center">🗄️</span>
             <span className="flex-1 truncate text-left">Archive</span>
@@ -136,7 +138,7 @@ export default function CollectionSidebar({
                   onSelectTag(t.name);
                   onSelectCollection(null);
                 }}
-                className={`${itemBase} ${selectedTag === t.name ? itemActive : itemIdle}`}
+                className={`${itemBase} ${!isSettingsView && selectedTag === t.name ? itemActive : itemIdle}`}
               >
                 <span className="w-5 text-center text-muted dark:text-dark-muted">
                   #

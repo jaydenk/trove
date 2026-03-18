@@ -21,7 +21,7 @@ export default function SearchBar({ value, onChange }: SearchBarProps) {
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
         onChange(next);
-      }, 300);
+      }, 150);
     },
     [onChange],
   );

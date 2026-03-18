@@ -58,6 +58,8 @@ export default function AuthenticatedApp({
     setSelectedTag(null);
     setPage(1);
     setSelectedLinkId(null);
+    setShowCollectionManager(false);
+    setShowPluginSettings(false);
   };
 
   const handleSelectTag = (tag: string | null) => {
@@ -65,19 +67,9 @@ export default function AuthenticatedApp({
     setSelectedCollection(null);
     setPage(1);
     setSelectedLinkId(null);
+    setShowCollectionManager(false);
+    setShowPluginSettings(false);
   };
-
-  // Cmd+N / Ctrl+N to open add modal
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === "n") {
-        e.preventDefault();
-        setIsAddModalOpen(true);
-      }
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, []);
 
   const isSearching = searchQuery.trim().length > 0;
 
@@ -119,6 +111,7 @@ export default function AuthenticatedApp({
           setShowPluginSettings(true);
           setShowCollectionManager(false);
         }}
+        isSettingsView={showCollectionManager || showPluginSettings}
       />
 
       {showCollectionManager ? (

@@ -32,6 +32,7 @@ export function runMigrations(db: Database): void {
       title             TEXT NOT NULL,
       description       TEXT,
       content           TEXT,
+      raw_html          TEXT,
       favicon_url       TEXT,
       image_url         TEXT,
       domain            TEXT,

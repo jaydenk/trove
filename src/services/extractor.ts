@@ -7,6 +7,7 @@ export interface ExtractionResult {
   title: string;
   description: string;
   content: string;
+  rawHtml: string;
   imageUrl: string | null;
   faviconUrl: string;
   domain: string;
@@ -20,6 +21,22 @@ function getTimeoutMs(): number {
 function getMaxContentLength(): number {
   const env = process.env.TROVE_MAX_CONTENT_LENGTH_CHARS;
   return env ? parseInt(env, 10) : 50000;
+}
+
+/**
+ * Strip HTML tags and normalise whitespace to produce clean plain text.
+ */
+function stripHtml(html: string): string {
+  return html
+    .replace(/<[^>]*>/g, " ")     // replace tags with space
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\s+/g, " ")         // collapse whitespace
+    .trim();
 }
 
 function getMetaContent(doc: Document, property: string): string | null {
@@ -68,7 +85,8 @@ export async function extractContent(url: string): Promise<ExtractionResult> {
     title = article.title || getMetaContent(doc, "og:title") || domain;
     description =
       article.excerpt || getMetaContent(doc, "og:description") || "";
-    content = article.textContent || "";
+    // Use textContent (plain text) and strip any residual HTML tags
+    content = stripHtml(article.textContent || "");
     imageUrl = getMetaContent(doc, "og:image");
   } else {
     // Fall back to OG meta tags
@@ -89,6 +107,7 @@ export async function extractContent(url: string): Promise<ExtractionResult> {
     title,
     description,
     content,
+    rawHtml: html,
     imageUrl,
     faviconUrl,
     domain,
@@ -106,6 +125,7 @@ export function extractAndUpdate(
         title: result.title,
         description: result.description,
         content: result.content,
+        raw_html: result.rawHtml,
         image_url: result.imageUrl ?? undefined,
         favicon_url: result.faviconUrl,
         domain: result.domain,

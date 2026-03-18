@@ -42,6 +42,7 @@ export interface UpdateExtractionInput {
   title?: string;
   description?: string;
   content?: string;
+  raw_html?: string;
   favicon_url?: string;
   image_url?: string;
   domain?: string;
@@ -287,6 +288,7 @@ export function updateExtraction(
        title = COALESCE(?, title),
        description = COALESCE(?, description),
        content = COALESCE(?, content),
+       raw_html = COALESCE(?, raw_html),
        favicon_url = COALESCE(?, favicon_url),
        image_url = COALESCE(?, image_url),
        domain = COALESCE(?, domain),
@@ -296,6 +298,7 @@ export function updateExtraction(
     data.title ?? null,
     data.description ?? null,
     data.content ?? null,
+    data.raw_html ?? null,
     data.favicon_url ?? null,
     data.image_url ?? null,
     data.domain ?? null,

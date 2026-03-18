@@ -1,4 +1,6 @@
-import type { Link } from "../api";
+import { useState } from "react";
+import { api } from "../api";
+import type { Link, PluginInfo } from "../api";
 
 // ---------------------------------------------------------------------------
 // Relative time helper
@@ -78,6 +80,70 @@ function ExtractionIcon({ status }: { status: string }) {
 }
 
 // ---------------------------------------------------------------------------
+// Plugin action button (inline on card)
+// ---------------------------------------------------------------------------
+
+function PluginActionButton({
+  link,
+  plugin,
+}: {
+  link: Link;
+  plugin: PluginInfo;
+}) {
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+
+  async function handleClick(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (status === "loading") return;
+
+    setStatus("loading");
+    try {
+      const result = await api.plugins.executeAction(link.id, plugin.id);
+      if (result.type === "redirect" && result.url) {
+        window.open(result.url, "_blank", "noopener,noreferrer");
+      }
+      setStatus("success");
+    } catch {
+      setStatus("error");
+    }
+
+    // Reset after 2 seconds
+    setTimeout(() => setStatus("idle"), 2000);
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={status === "loading"}
+      title={plugin.name}
+      className="inline-flex items-center justify-center h-6 w-6 rounded text-xs opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity hover:bg-neutral-200 dark:hover:bg-neutral-700 disabled:opacity-50 shrink-0"
+    >
+      {status === "loading" ? (
+        <svg
+          className="animate-spin h-3.5 w-3.5 text-muted dark:text-dark-muted"
+          viewBox="0 0 24 24"
+          fill="none"
+        >
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+      ) : status === "success" ? (
+        <svg className="h-3.5 w-3.5 text-green-600 dark:text-green-400" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
+        </svg>
+      ) : status === "error" ? (
+        <svg className="h-3.5 w-3.5 text-red-500 dark:text-red-400" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+        </svg>
+      ) : (
+        <span>{plugin.icon}</span>
+      )}
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // LinkCard
 // ---------------------------------------------------------------------------
 
@@ -85,20 +151,25 @@ export interface LinkCardProps {
   link: Link;
   onClick: () => void;
   isSelected?: boolean;
+  plugins?: PluginInfo[];
 }
 
-export default function LinkCard({ link, onClick, isSelected }: LinkCardProps) {
+export default function LinkCard({ link, onClick, isSelected, plugins }: LinkCardProps) {
+  const executablePlugins = plugins?.filter(
+    (p) => p.hasExecute && p.isConfigured,
+  );
+
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`w-full text-left px-4 py-3 border-b border-border dark:border-dark-border transition-colors cursor-pointer ${
+      className={`group w-full text-left px-4 py-3 border-b border-border dark:border-dark-border transition-colors cursor-pointer ${
         isSelected
           ? "bg-hover dark:bg-dark-hover"
           : "hover:bg-hover dark:hover:bg-dark-hover"
       }`}
     >
-      {/* Row 1: favicon + title + extraction status */}
+      {/* Row 1: favicon + title + extraction status + plugin actions */}
       <div className="flex items-center gap-2 min-w-0">
         {link.faviconUrl ? (
           <img
@@ -115,6 +186,13 @@ export default function LinkCard({ link, onClick, isSelected }: LinkCardProps) {
           {link.title || link.url}
         </span>
         <ExtractionIcon status={link.extractionStatus} />
+        {executablePlugins && executablePlugins.length > 0 && (
+          <span className="ml-auto flex items-center gap-0.5 shrink-0">
+            {executablePlugins.map((p) => (
+              <PluginActionButton key={p.id} link={link} plugin={p} />
+            ))}
+          </span>
+        )}
       </div>
 
       {/* Row 2: domain + relative time */}

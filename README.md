@@ -320,6 +320,7 @@ TroveLinkManager/
 │   │   │   ├── useAuth.ts         # Auth state hook (token validation, login/logout)
 │   │   │   ├── useCollections.ts  # Fetches collections from the API
 │   │   │   ├── useLinks.ts        # Fetches paginated/filtered links from the API
+│   │   │   ├── usePlugins.ts      # Fetches registered plugins from the API
 │   │   │   └── useTags.ts         # Fetches tags from the API
 │   │   ├── components/
 │   │   │   ├── LoginScreen.tsx         # Token login screen

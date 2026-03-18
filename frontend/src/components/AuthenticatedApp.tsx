@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLinks } from "../hooks/useLinks";
 import { useCollections } from "../hooks/useCollections";
+import { usePlugins } from "../hooks/usePlugins";
 import CollectionSidebar from "./CollectionSidebar";
 import CollectionManager from "./CollectionManager";
 import LinkCard from "./LinkCard";
@@ -48,6 +49,7 @@ export default function AuthenticatedApp({
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [showCollectionManager, setShowCollectionManager] = useState(false);
   const { collections, refetch: refetchCollections } = useCollections();
+  const { plugins, refetch: refetchPlugins } = usePlugins();
 
   const handleSelectCollection = (id: string | null) => {
     setSelectedCollection(id);
@@ -191,6 +193,7 @@ export default function AuthenticatedApp({
                       link={link}
                       isSelected={link.id === selectedLinkId}
                       onClick={() => setSelectedLinkId(link.id)}
+                      plugins={plugins}
                     />
                     {/* FTS snippets use dangerouslySetInnerHTML because SQLite
                         snippet() returns <b> tags for match highlighting.

@@ -97,12 +97,13 @@ TroveLinkManager/
 │   │   │   ├── useLinks.ts       # Fetches paginated/filtered links from the API
 │   │   │   └── useTags.ts        # Fetches tags from the API
 │   │   ├── components/
-│   │   │   ├── LoginScreen.tsx       # Token login screen
-│   │   │   ├── CollectionSidebar.tsx # Left sidebar with collections, archive, and tags
-│   │   │   ├── SearchBar.tsx         # Debounced search input with Cmd+K shortcut
-│   │   │   ├── LinkCard.tsx          # Link list item with favicon, title, domain, tags
-│   │   │   ├── LinkDetail.tsx        # Right-side detail panel with editing and actions
-│   │   │   └── AddLinkModal.tsx      # Modal for adding links with extraction preview
+│   │   │   ├── LoginScreen.tsx         # Token login screen
+│   │   │   ├── CollectionSidebar.tsx   # Left sidebar with collections, archive, and tags
+│   │   │   ├── CollectionManager.tsx   # Settings view for CRUD management of collections
+│   │   │   ├── SearchBar.tsx           # Debounced search input with Cmd+K shortcut
+│   │   │   ├── LinkCard.tsx            # Link list item with favicon, title, domain, tags
+│   │   │   ├── LinkDetail.tsx          # Right-side detail panel with editing and actions
+│   │   │   └── AddLinkModal.tsx        # Modal for adding links with extraction preview
 │   │   ├── App.tsx          # Root component with three-column layout (sidebar, list, detail panel)
 │   │   ├── main.tsx
 │   │   └── index.css

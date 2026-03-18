@@ -16,6 +16,7 @@ import tags from "./routes/tags";
 import admin from "./routes/admin";
 import user from "./routes/user";
 import plugins from "./routes/plugins";
+import importExport from "./routes/importExport";
 
 const app = new Hono<{ Variables: AppVariables }>();
 
@@ -55,6 +56,7 @@ app.route("/", collections);
 app.route("/", tags);
 app.route("/", user);
 app.route("/", plugins);
+app.route("/", importExport);
 app.route("/", admin);
 
 // Serve frontend static files for production

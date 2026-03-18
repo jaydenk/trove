@@ -212,6 +212,19 @@ All API routes (under `/api/*`) require a `Authorization: Bearer <token>` header
 
 **POST /api/links/:id/actions/:pluginId** executes the plugin's action on the specified link and records the result. Returns the `PluginResult` (`{ type: "success"|"redirect"|"error", message|url }`).
 
+### Import / Export
+
+| Method | Path                | Auth | Description                                          |
+| ------ | ------------------- | ---- | ---------------------------------------------------- |
+| POST   | `/api/import`       | Yes  | Import links from HTML bookmarks, CSV, or JSON data  |
+| GET    | `/api/export/json`  | Yes  | Export all links as JSON (attachment download)        |
+| GET    | `/api/export/csv`   | Yes  | Export all links as CSV (attachment download)         |
+| GET    | `/api/export/html`  | Yes  | Export all links as HTML bookmarks (attachment download) |
+
+**POST /api/import** accepts `{ format: "html"|"csv"|"json", data: "file contents as string" }`. Returns `{ imported: number, skipped: number, errors: string[] }`. Duplicate URLs are silently skipped and counted in the `skipped` field. Collection names from the import data are matched to existing collections; unmatched collections default to inbox.
+
+**GET /api/export/*** endpoints return the exported file with appropriate `Content-Type` and `Content-Disposition` headers for browser download.
+
 **Response envelope:**
 
 ```json
@@ -434,6 +447,7 @@ TroveLinkManager/
 │   │   ├── collections.ts    # Collection CRUD routes
 │   │   ├── tags.ts           # Tag CRUD routes
 │   │   ├── links.ts          # Link CRUD, search, archive, extraction routes
+│   │   ├── importExport.ts   # Import/export routes (HTML, CSV, JSON)
 │   │   ├── plugins.ts        # Plugin config, actions, and webhook routes
 │   │   └── __tests__/        # Route-level tests
 │   ├── plugins/

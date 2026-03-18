@@ -1,5 +1,6 @@
 import { Database } from "bun:sqlite";
 import { newId } from "../../lib/id";
+import type { ExportLink } from "../../services/exporter";
 
 export interface Link {
   id: string;
@@ -313,4 +314,55 @@ export function updateExtraction(
     data.extraction_status,
     linkId
   );
+}
+
+export function exportLinks(db: Database, userId: string): ExportLink[] {
+  const rows = db
+    .query<
+      {
+        id: string;
+        url: string;
+        title: string;
+        description: string | null;
+        domain: string | null;
+        collection_name: string;
+        source: string;
+        created_at: string;
+        updated_at: string;
+      },
+      [string]
+    >(
+      `SELECT l.id, l.url, l.title, l.description, l.domain,
+              COALESCE(c.name, 'inbox') as collection_name,
+              l.source, l.created_at, l.updated_at
+       FROM links l
+       LEFT JOIN collections c ON c.id = l.collection_id
+       WHERE l.user_id = ?
+       ORDER BY l.created_at DESC`
+    )
+    .all(userId);
+
+  return rows.map((row) => {
+    const tags = db
+      .query<{ name: string }, [string]>(
+        `SELECT t.name FROM tags t
+         INNER JOIN link_tags lt ON lt.tag_id = t.id
+         WHERE lt.link_id = ?
+         ORDER BY t.name`
+      )
+      .all(row.id)
+      .map((t) => t.name);
+
+    return {
+      url: row.url,
+      title: row.title,
+      description: row.description,
+      domain: row.domain,
+      collectionName: row.collection_name,
+      tags,
+      source: row.source,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  });
 }

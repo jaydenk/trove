@@ -6,7 +6,9 @@ import type { Link } from "../api";
 
 function relativeTime(dateString: string): string {
   const now = Date.now();
-  const then = new Date(dateString).getTime();
+  // SQLite datetime format "YYYY-MM-DD HH:MM:SS" needs T separator and Z suffix for UTC
+  const normalised = dateString.includes("T") ? dateString : dateString.replace(" ", "T") + "Z";
+  const then = new Date(normalised).getTime();
   const diffSeconds = Math.max(0, Math.floor((now - then) / 1000));
 
   if (diffSeconds < 60) return "just now";

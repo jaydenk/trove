@@ -35,7 +35,8 @@ function Spinner({ className = "h-4 w-4" }: { className?: string }) {
 // ---------------------------------------------------------------------------
 
 function formatDate(dateString: string): string {
-  const date = new Date(dateString);
+  const normalised = dateString.includes("T") ? dateString : dateString.replace(" ", "T") + "Z";
+  const date = new Date(normalised);
   return date.toLocaleDateString("en-AU", {
     day: "numeric",
     month: "short",

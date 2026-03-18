@@ -106,6 +106,27 @@ export class ApiError extends Error {
 }
 
 // ---------------------------------------------------------------------------
+// Snake_case to camelCase conversion
+// ---------------------------------------------------------------------------
+
+function snakeToCamel(str: string): string {
+  return str.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function cameliseKeys(obj: any): any {
+  if (Array.isArray(obj)) return obj.map(cameliseKeys);
+  if (obj !== null && typeof obj === "object") {
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj)) {
+      result[snakeToCamel(key)] = cameliseKeys(value);
+    }
+    return result;
+  }
+  return obj;
+}
+
+// ---------------------------------------------------------------------------
 // Fetch wrapper
 // ---------------------------------------------------------------------------
 
@@ -137,7 +158,6 @@ async function request<T>(
   if (res.status === 401) {
     clearToken();
     window.location.reload();
-    // The reload will prevent further execution, but we throw to satisfy TS
     throw new ApiError(401, "UNAUTHORIZED", "Unauthorised");
   }
 
@@ -156,7 +176,7 @@ async function request<T>(
     );
   }
 
-  return body as T;
+  return cameliseKeys(body) as T;
 }
 
 // ---------------------------------------------------------------------------

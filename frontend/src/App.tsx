@@ -1,8 +1,14 @@
+import { useState } from "react";
 import { useAuth } from "./hooks/useAuth";
 import LoginScreen from "./components/LoginScreen";
+import CollectionSidebar from "./components/CollectionSidebar";
 
 export default function App() {
   const { user, isLoading, isAuthenticated, login, logout } = useAuth();
+  const [selectedCollection, setSelectedCollection] = useState<string | null>(
+    null,
+  );
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
   if (isLoading) {
     return (
@@ -40,28 +46,41 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-surface dark:bg-dark">
-      <header className="border-b border-border dark:border-dark-border px-6 py-4 flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
-          Trove
-        </h1>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-muted dark:text-dark-muted">
-            {user?.name}
-          </span>
-          <button
-            onClick={logout}
-            className="text-sm text-muted dark:text-dark-muted hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
-          >
-            Sign out
-          </button>
-        </div>
-      </header>
-      <main className="p-6">
-        <p className="text-muted dark:text-dark-muted">
-          Welcome back, {user?.name}. Your library is ready.
-        </p>
-      </main>
+    <div className="flex h-screen bg-surface dark:bg-dark">
+      <CollectionSidebar
+        selectedCollection={selectedCollection}
+        onSelectCollection={setSelectedCollection}
+        selectedTag={selectedTag}
+        onSelectTag={setSelectedTag}
+      />
+
+      <div className="flex flex-1 flex-col min-w-0">
+        <header className="border-b border-border dark:border-dark-border px-6 py-4 flex items-center justify-end shrink-0">
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-muted dark:text-dark-muted">
+              {user?.name}
+            </span>
+            <button
+              onClick={logout}
+              className="text-sm text-muted dark:text-dark-muted hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
+            >
+              Sign out
+            </button>
+          </div>
+        </header>
+
+        <main className="flex-1 flex items-center justify-center p-6">
+          <p className="text-muted dark:text-dark-muted">
+            {selectedCollection === "archive"
+              ? "Viewing archived links"
+              : selectedCollection
+                ? "Viewing collection"
+                : selectedTag
+                  ? `Viewing links tagged #${selectedTag}`
+                  : "Select a collection or search"}
+          </p>
+        </main>
+      </div>
     </div>
   );
 }

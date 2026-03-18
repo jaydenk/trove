@@ -92,10 +92,13 @@ TroveLinkManager/
 │   ├── src/
 │   │   ├── api.ts           # Typed API client with fetch wrapper
 │   │   ├── hooks/
-│   │   │   └── useAuth.ts   # Auth state hook (token validation, login/logout)
+│   │   │   ├── useAuth.ts        # Auth state hook (token validation, login/logout)
+│   │   │   ├── useCollections.ts # Fetches collections from the API
+│   │   │   └── useTags.ts        # Fetches tags from the API
 │   │   ├── components/
-│   │   │   └── LoginScreen.tsx  # Token login screen
-│   │   ├── App.tsx          # Root component with auth gating
+│   │   │   ├── LoginScreen.tsx       # Token login screen
+│   │   │   └── CollectionSidebar.tsx # Left sidebar with collections, archive, and tags
+│   │   ├── App.tsx          # Root component with sidebar layout and auth gating
 │   │   ├── main.tsx
 │   │   └── index.css
 │   ├── index.html

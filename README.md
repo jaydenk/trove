@@ -276,6 +276,8 @@ TroveLinkManager/
 │   ├── plugins/
 │   │   ├── types.ts          # Plugin system type definitions (TrovePlugin, PluginInfo, etc.)
 │   │   ├── registry.ts       # Plugin registry (register, lookup, list, config status)
+│   │   ├── reader.ts         # Readwise Reader plugin (send links for reading later)
+│   │   ├── things.ts         # Things plugin (create tasks via URL scheme)
 │   │   └── __tests__/        # Plugin-level tests
 │   ├── services/
 │   │   ├── extractor.ts      # Content extraction (Readability + OG fallback)

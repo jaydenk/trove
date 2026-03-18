@@ -158,7 +158,15 @@ export function listLinks(
   if (filters.q) {
     usesFts = true;
     conditions.push("fts.links_fts MATCH ?");
-    params.push(filters.q);
+    // Add * suffix for prefix matching (e.g., "type" matches "typescript")
+    // Escape double quotes in the query and wrap each term with *
+    const ftsQuery = filters.q
+      .replace(/"/g, "")
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((term) => `"${term}"*`)
+      .join(" ");
+    params.push(ftsQuery);
     selectSnippet =
       ", snippet(links_fts, 1, '<mark>', '</mark>', '...', 32) as snippet";
   }

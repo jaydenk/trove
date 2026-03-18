@@ -111,7 +111,7 @@ export default function AuthenticatedApp({
           setShowPluginSettings(true);
           setShowCollectionManager(false);
         }}
-        isSettingsView={showCollectionManager || showPluginSettings}
+        activeSettingsView={showCollectionManager ? "collections" : showPluginSettings ? "plugins" : null}
       />
 
       {showCollectionManager ? (

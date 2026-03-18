@@ -426,7 +426,8 @@ TroveLinkManager/
 │   │   ├── n8n.ts            # n8n webhook ingest plugin (receive links from n8n workflows)
 │   │   └── __tests__/        # Plugin-level tests
 │   ├── mcp/
-│   │   └── server.ts         # MCP server (stdio transport, 7 tools)
+│   │   ├── server.ts         # MCP server (stdio transport, 7 tools)
+│   │   └── __tests__/        # MCP tool logic tests
 │   ├── services/
 │   │   ├── extractor.ts      # Content extraction (Readability + OG fallback)
 │   │   └── __tests__/        # Service-level tests

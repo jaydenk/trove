@@ -274,7 +274,9 @@ TroveLinkManager/
 │   │   ├── links.ts          # Link CRUD, search, archive, extraction routes
 │   │   └── __tests__/        # Route-level tests
 │   ├── plugins/
-│   │   └── types.ts          # Plugin system type definitions (TrovePlugin, PluginInfo, etc.)
+│   │   ├── types.ts          # Plugin system type definitions (TrovePlugin, PluginInfo, etc.)
+│   │   ├── registry.ts       # Plugin registry (register, lookup, list, config status)
+│   │   └── __tests__/        # Plugin-level tests
 │   ├── services/
 │   │   ├── extractor.ts      # Content extraction (Readability + OG fallback)
 │   │   └── __tests__/        # Service-level tests

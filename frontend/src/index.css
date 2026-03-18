@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+@theme {
+  --color-surface: #fafaf8;
+  --color-card: #ffffff;
+  --color-hover: #f5f4f0;
+  --color-border: #e8e6e1;
+  --color-muted: #999;
+
+  --color-dark: #1c1b1a;
+  --color-dark-card: #242220;
+  --color-dark-hover: #2a2826;
+  --color-dark-border: #2a2826;
+  --color-dark-muted: #777;
+
+  --font-sans: system-ui, -apple-system, sans-serif;
+}

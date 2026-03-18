@@ -269,6 +269,15 @@ export const api = {
       request<{ extractionStatus: string }>(`/links/${id}/extract`, {
         method: "POST",
       }),
+
+    bulkArchive: (ids: string[]) =>
+      Promise.all(ids.map((id) => api.links.archive(id))),
+
+    bulkDelete: (ids: string[]) =>
+      Promise.all(ids.map((id) => api.links.delete(id))),
+
+    bulkUpdate: (ids: string[], data: UpdateLinkInput) =>
+      Promise.all(ids.map((id) => api.links.update(id, data))),
   },
 
   collections: {

@@ -1,13 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useLinks } from "../hooks/useLinks";
 import { useCollections } from "../hooks/useCollections";
 import { usePlugins } from "../hooks/usePlugins";
+import { api } from "../api";
 import CollectionSidebar from "./CollectionSidebar";
 import SettingsView from "./SettingsView";
 import LinkCard from "./LinkCard";
 import LinkDetail from "./LinkDetail";
 import SearchBar from "./SearchBar";
 import AddLinkModal from "./AddLinkModal";
+import BulkActionBar from "./BulkActionBar";
+import MobileNav from "./MobileNav";
 import type { User } from "../api";
 
 /**
@@ -48,6 +51,27 @@ export default function AuthenticatedApp({
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+
+  // Bulk selection (Task 5)
+  const [selectedLinkIds, setSelectedLinkIds] = useState<Set<string>>(
+    new Set(),
+  );
+
+  // Keyboard navigation (Task 6)
+  const [focusedLinkIndex, setFocusedLinkIndex] = useState<number>(-1);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  // Mobile layout (Task 7)
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  // Bookmarklet (Task 8)
+  const [bookmarkletUrl, setBookmarkletUrl] = useState<string | undefined>(
+    undefined,
+  );
+  const [bookmarkletTitle, setBookmarkletTitle] = useState<string | undefined>(
+    undefined,
+  );
+
   const { collections, refetch: refetchCollections } = useCollections();
   const { plugins, refetch: refetchPlugins } = usePlugins();
 
@@ -57,6 +81,9 @@ export default function AuthenticatedApp({
     setPage(1);
     setSelectedLinkId(null);
     setShowSettings(false);
+    setSelectedLinkIds(new Set());
+    setFocusedLinkIndex(-1);
+    setIsMobileSidebarOpen(false);
   };
 
   const handleSelectTag = (tag: string | null) => {
@@ -65,6 +92,9 @@ export default function AuthenticatedApp({
     setPage(1);
     setSelectedLinkId(null);
     setShowSettings(false);
+    setSelectedLinkIds(new Set());
+    setFocusedLinkIndex(-1);
+    setIsMobileSidebarOpen(false);
   };
 
   const isSearching = searchQuery.trim().length > 0;
@@ -92,16 +122,188 @@ export default function AuthenticatedApp({
     refetch: refetchLinks,
   } = useLinks(linkFilters);
 
+  // -----------------------------------------------------------------------
+  // Bulk action handlers (Task 5)
+  // -----------------------------------------------------------------------
+
+  const toggleLinkSelection = useCallback((id: string) => {
+    setSelectedLinkIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedLinkIds(new Set());
+  }, []);
+
+  const handleBulkArchive = useCallback(async () => {
+    const ids = Array.from(selectedLinkIds);
+    await api.links.bulkArchive(ids);
+    setSelectedLinkIds(new Set());
+    refetchLinks();
+    refetchCollections();
+  }, [selectedLinkIds, refetchLinks, refetchCollections]);
+
+  const handleBulkDelete = useCallback(async () => {
+    const ids = Array.from(selectedLinkIds);
+    await api.links.bulkDelete(ids);
+    setSelectedLinkIds(new Set());
+    refetchLinks();
+    refetchCollections();
+  }, [selectedLinkIds, refetchLinks, refetchCollections]);
+
+  const handleBulkMoveToCollection = useCallback(
+    async (collectionId: string) => {
+      const ids = Array.from(selectedLinkIds);
+      await api.links.bulkUpdate(ids, {
+        collectionId: collectionId || undefined,
+      });
+      setSelectedLinkIds(new Set());
+      refetchLinks();
+      refetchCollections();
+    },
+    [selectedLinkIds, refetchLinks, refetchCollections],
+  );
+
+  // -----------------------------------------------------------------------
+  // Keyboard shortcuts (Task 6)
+  // -----------------------------------------------------------------------
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+      switch (e.key) {
+        case "/":
+          e.preventDefault();
+          searchRef.current?.focus();
+          break;
+        case "Escape":
+          if (selectedLinkIds.size > 0) {
+            setSelectedLinkIds(new Set());
+          } else if (selectedLinkId) {
+            setSelectedLinkId(null);
+          }
+          setFocusedLinkIndex(-1);
+          break;
+        case "j":
+          if (links.length > 0) {
+            setFocusedLinkIndex((prev) =>
+              prev < links.length - 1 ? prev + 1 : 0,
+            );
+          }
+          break;
+        case "k":
+          if (links.length > 0) {
+            setFocusedLinkIndex((prev) =>
+              prev > 0 ? prev - 1 : links.length - 1,
+            );
+          }
+          break;
+        case "o":
+        case "Enter":
+          if (focusedLinkIndex >= 0 && focusedLinkIndex < links.length) {
+            setSelectedLinkId(links[focusedLinkIndex].id);
+          }
+          break;
+        case "x":
+          if (focusedLinkIndex >= 0 && focusedLinkIndex < links.length) {
+            toggleLinkSelection(links[focusedLinkIndex].id);
+          }
+          break;
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [
+    links,
+    focusedLinkIndex,
+    selectedLinkId,
+    selectedLinkIds,
+    toggleLinkSelection,
+  ]);
+
+  // Reset focused index when links change
+  useEffect(() => {
+    setFocusedLinkIndex(-1);
+  }, [links]);
+
+  // -----------------------------------------------------------------------
+  // Bookmarklet URL param handling (Task 8)
+  // -----------------------------------------------------------------------
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const url = params.get("url");
+    if (url) {
+      setBookmarkletUrl(url);
+      setBookmarkletTitle(params.get("title") || undefined);
+      setIsAddModalOpen(true);
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
+  // -----------------------------------------------------------------------
+  // Current view name (for mobile nav)
+  // -----------------------------------------------------------------------
+
+  const currentViewName = (() => {
+    if (showSettings) return "Settings";
+    if (isSearching) return "Search Results";
+    if (selectedCollection === "archive") return "Archive";
+    if (selectedCollection) {
+      const col = collections.find((c) => c.id === selectedCollection);
+      return col ? col.name : "Collection";
+    }
+    if (selectedTag) return `#${selectedTag}`;
+    return "All Links";
+  })();
+
+  const isBulkMode = selectedLinkIds.size > 0;
+
   return (
     <div className="flex h-screen bg-surface dark:bg-dark">
-      <CollectionSidebar
-        selectedCollection={selectedCollection}
-        onSelectCollection={handleSelectCollection}
-        selectedTag={selectedTag}
-        onSelectTag={handleSelectTag}
-        onOpenSettings={() => setShowSettings(true)}
-        isSettingsActive={showSettings}
-      />
+      {/* Desktop sidebar */}
+      <div className="hidden lg:block">
+        <CollectionSidebar
+          selectedCollection={selectedCollection}
+          onSelectCollection={handleSelectCollection}
+          selectedTag={selectedTag}
+          onSelectTag={handleSelectTag}
+          onOpenSettings={() => setShowSettings(true)}
+          isSettingsActive={showSettings}
+        />
+      </div>
+
+      {/* Mobile sidebar overlay */}
+      {isMobileSidebarOpen && (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <div
+            className="absolute inset-0 bg-black/50 dark:bg-black/70"
+            onClick={() => setIsMobileSidebarOpen(false)}
+          />
+          <div className="relative z-10 h-full w-56">
+            <CollectionSidebar
+              selectedCollection={selectedCollection}
+              onSelectCollection={handleSelectCollection}
+              selectedTag={selectedTag}
+              onSelectTag={handleSelectTag}
+              onOpenSettings={() => {
+                setShowSettings(true);
+                setIsMobileSidebarOpen(false);
+              }}
+              isSettingsActive={showSettings}
+            />
+          </div>
+        </div>
+      )}
 
       {showSettings ? (
         <SettingsView
@@ -112,8 +314,17 @@ export default function AuthenticatedApp({
         />
       ) : (
         <div className="flex flex-1 flex-col min-w-0">
-          <header className="border-b border-border dark:border-dark-border px-6 py-4 flex items-center justify-between shrink-0">
+          {/* Mobile nav bar */}
+          <MobileNav
+            onToggleSidebar={() => setIsMobileSidebarOpen((v) => !v)}
+            onOpenAddModal={() => setIsAddModalOpen(true)}
+            currentView={currentViewName}
+          />
+
+          {/* Desktop header */}
+          <header className="hidden lg:flex border-b border-border dark:border-dark-border px-6 py-4 items-center justify-between shrink-0">
             <SearchBar
+              ref={searchRef}
               value={searchQuery}
               onChange={(v) => {
                 setSearchQuery(v);
@@ -179,13 +390,17 @@ export default function AuthenticatedApp({
               </div>
             ) : (
               <div className="flex flex-col">
-                {links.map((link) => (
+                {links.map((link, index) => (
                   <div key={link.id}>
                     <LinkCard
                       link={link}
                       isSelected={link.id === selectedLinkId}
+                      isFocused={index === focusedLinkIndex}
                       onClick={() => setSelectedLinkId(link.id)}
                       plugins={plugins}
+                      isSelectable={isBulkMode}
+                      isChecked={selectedLinkIds.has(link.id)}
+                      onToggleSelect={() => toggleLinkSelection(link.id)}
                     />
                     {/* FTS snippets use dangerouslySetInnerHTML because SQLite
                         snippet() returns <b> tags for match highlighting.
@@ -249,13 +464,30 @@ export default function AuthenticatedApp({
 
       <AddLinkModal
         isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setBookmarkletUrl(undefined);
+          setBookmarkletTitle(undefined);
+        }}
         onSaved={() => {
           refetchLinks();
           refetchCollections();
         }}
         collections={collections}
+        initialUrl={bookmarkletUrl}
+        initialTitle={bookmarkletTitle}
       />
+
+      {isBulkMode && (
+        <BulkActionBar
+          selectedCount={selectedLinkIds.size}
+          collections={collections}
+          onArchive={handleBulkArchive}
+          onDelete={handleBulkDelete}
+          onMoveToCollection={handleBulkMoveToCollection}
+          onClearSelection={clearSelection}
+        />
+      )}
     </div>
   );
 }

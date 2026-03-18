@@ -151,10 +151,14 @@ export interface LinkCardProps {
   link: Link;
   onClick: () => void;
   isSelected?: boolean;
+  isFocused?: boolean;
   plugins?: PluginInfo[];
+  isSelectable?: boolean;
+  isChecked?: boolean;
+  onToggleSelect?: () => void;
 }
 
-export default function LinkCard({ link, onClick, isSelected, plugins }: LinkCardProps) {
+export default function LinkCard({ link, onClick, isSelected, isFocused, plugins, isSelectable, isChecked, onToggleSelect }: LinkCardProps) {
   const executablePlugins = plugins?.filter(
     (p) => p.hasExecute && p.isConfigured,
   );
@@ -164,13 +168,48 @@ export default function LinkCard({ link, onClick, isSelected, plugins }: LinkCar
       type="button"
       onClick={onClick}
       className={`group w-full text-left px-4 py-3 border-b border-border dark:border-dark-border transition-colors cursor-pointer ${
+        isFocused
+          ? "border-l-2 border-l-neutral-500 dark:border-l-neutral-400 pl-[14px]"
+          : ""
+      } ${
         isSelected
           ? "bg-hover dark:bg-dark-hover"
-          : "hover:bg-hover dark:hover:bg-dark-hover"
+          : isChecked
+            ? "bg-blue-50 dark:bg-blue-950/20"
+            : "hover:bg-hover dark:hover:bg-dark-hover"
       }`}
     >
-      {/* Row 1: favicon + title + extraction status + plugin actions */}
+      {/* Row 1: checkbox + favicon + title + extraction status + plugin actions */}
       <div className="flex items-center gap-2 min-w-0">
+        {(isSelectable || isChecked) && (
+          <span
+            role="checkbox"
+            aria-checked={isChecked}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleSelect?.();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === " " || e.key === "Enter") {
+                e.stopPropagation();
+                e.preventDefault();
+                onToggleSelect?.();
+              }
+            }}
+            tabIndex={0}
+            className={`shrink-0 flex items-center justify-center h-4 w-4 rounded border transition-colors cursor-pointer ${
+              isChecked
+                ? "bg-neutral-900 dark:bg-neutral-100 border-neutral-900 dark:border-neutral-100"
+                : "border-neutral-400 dark:border-neutral-500 hover:border-neutral-600 dark:hover:border-neutral-300"
+            }`}
+          >
+            {isChecked && (
+              <svg className="h-3 w-3 text-white dark:text-neutral-900" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
+              </svg>
+            )}
+          </span>
+        )}
         {link.faviconUrl ? (
           <img
             src={link.faviconUrl}

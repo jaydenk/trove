@@ -17,7 +17,10 @@ Trove is a self-hosted personal link library for saving, organising, and searchi
 - **Rate limiting** on write operations (60 requests/minute per token)
 - **Structured logging** via Pino with pretty-printing in development
 - **Single-container deployment** with Docker and healthcheck support
-- **Responsive UI** built with React 19, Tailwind CSS 4, and Vite 6
+- **Bulk actions** for archiving, deleting, and moving multiple links at once
+- **Keyboard shortcuts** for navigation (j/k), search (/), and selection (x)
+- **Bookmarklet** for saving links from any page in one click
+- **Responsive UI** built with React 19, Tailwind CSS 4, and Vite 6 with mobile-optimised layout
 
 ## Tech Stack
 
@@ -407,10 +410,38 @@ Add the following to your Claude Desktop MCP settings (`~/Library/Application Su
 Trove supports several ways to save links:
 
 - **Web UI** — use the "Add Link" button in the top bar to paste a URL manually.
+- **Bookmarklet** — drag the bookmarklet to your bookmarks bar to save links in one click from any page (see [Bookmarklet](#bookmarklet) below).
 - **API** — `POST /api/links` with `{ "url": "..." }` from any HTTP client, script, or automation tool.
 - **n8n Webhook** — pipe links from n8n workflows via `POST /api/plugins/n8n/webhook` (see [n8n Webhook plugin](#n8n-webhook) above).
 - **iOS Shortcut** — save links directly from the iOS Share Sheet. See the [iOS Shortcut setup guide](docs/ios-shortcut.md) for step-by-step instructions.
 - **MCP** — AI assistants can search, browse, and save links via the MCP server (see [MCP Server](#mcp-server) above).
+
+## Bookmarklet
+
+Save any page to Trove with one click using a browser bookmarklet. Create a new bookmark in your browser and set the URL to:
+
+```
+javascript:void(window.open('https://YOUR_TROVE_URL/?url='+encodeURIComponent(location.href)+'&title='+encodeURIComponent(document.title),'trove','width=600,height=500'))
+```
+
+Replace `YOUR_TROVE_URL` with the URL of your Trove instance (e.g. `trove.example.com`). When clicked, it opens a small popup with the Add Link modal pre-filled with the current page's URL and title.
+
+The bookmarklet works by passing `url` and `title` query parameters to Trove. If you are already logged in, the Add Link modal opens immediately. If not, you will be prompted to log in first.
+
+## Keyboard Shortcuts
+
+The following keyboard shortcuts are available when no input field is focused:
+
+| Key     | Action                                    |
+| ------- | ----------------------------------------- |
+| `/`     | Focus the search bar                      |
+| `Escape`| Clear selection / close detail panel      |
+| `j`     | Move focus down in the link list          |
+| `k`     | Move focus up in the link list            |
+| `o`     | Open the focused link's detail panel      |
+| `Enter` | Open the focused link's detail panel      |
+| `x`     | Toggle bulk selection on the focused link |
+| `⌘K`    | Focus the search bar                      |
 
 ## CI/CD
 
@@ -496,7 +527,9 @@ TroveLinkManager/
 │   │   │   ├── LinkDetail.tsx          # Right-side detail panel with editing, plugin actions, and history
 │   │   │   ├── PluginSettings.tsx      # Plugin configuration screen with per-user settings
 │   │   │   ├── ImportExportSettings.tsx # Import/export UI with file upload and download
-│   │   │   └── AddLinkModal.tsx        # Modal for adding links with extraction preview
+│   │   │   ├── AddLinkModal.tsx        # Modal for adding links with extraction preview and bookmarklet support
+│   │   │   ├── BulkActionBar.tsx      # Floating bar for bulk archive, delete, and move actions
+│   │   │   └── MobileNav.tsx          # Top nav bar for mobile screens with hamburger menu
 │   │   ├── App.tsx           # Root component with three-column layout
 │   │   ├── main.tsx
 │   │   └── index.css

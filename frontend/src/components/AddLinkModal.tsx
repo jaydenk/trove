@@ -128,6 +128,8 @@ export interface AddLinkModalProps {
   onClose: () => void;
   onSaved: () => void;
   collections: Collection[];
+  initialUrl?: string;
+  initialTitle?: string;
 }
 
 export default function AddLinkModal({
@@ -135,6 +137,8 @@ export default function AddLinkModal({
   onClose,
   onSaved,
   collections,
+  initialUrl,
+  initialTitle,
 }: AddLinkModalProps) {
   const [step, setStep] = useState<ModalStep>("url");
   const [url, setUrl] = useState("");
@@ -172,16 +176,28 @@ export default function AddLinkModal({
     }
   }, []);
 
-  // Focus URL input when modal opens
+  // Focus URL input when modal opens; pre-fill from bookmarklet params
   useEffect(() => {
     if (isOpen) {
       resetState();
-      // Delay focus slightly so the element is in the DOM
-      requestAnimationFrame(() => {
-        urlInputRef.current?.focus();
-      });
+      if (initialUrl) {
+        setUrl(initialUrl);
+        if (initialTitle) {
+          setTitle(initialTitle);
+        }
+        // Auto-submit the URL so extraction starts immediately
+        requestAnimationFrame(() => {
+          urlInputRef.current?.focus();
+        });
+      } else {
+        // Delay focus slightly so the element is in the DOM
+        requestAnimationFrame(() => {
+          urlInputRef.current?.focus();
+        });
+      }
     }
-  }, [isOpen, resetState]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   // Cleanup poll timer on unmount
   useEffect(() => {

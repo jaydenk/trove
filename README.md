@@ -70,6 +70,7 @@ TroveLinkManager/
 │   │   ├── health.ts         # GET /health — status and link count
 │   │   ├── user.ts           # GET/PATCH /api/me — user profile
 │   │   ├── admin.ts          # Admin-only user management routes
+│   │   ├── collections.ts    # Collection CRUD routes
 │   │   └── __tests__/        # Route-level tests
 │   ├── seed.ts               # CLI script to create the first admin user
 │   └── db/
@@ -168,6 +169,15 @@ Error codes: `NOT_FOUND` (404), `UNAUTHORIZED` (401), `FORBIDDEN` (403), `VALIDA
 | GET    | `/api/admin/users`      | Admin | List all users (tokens excluded)         |
 | POST   | `/api/admin/users`      | Admin | Create user (returns token once)         |
 | DELETE  | `/api/admin/users/:id` | Admin | Delete user and all related data         |
+
+### Collections
+
+| Method | Path                      | Auth | Description                                              |
+| ------ | ------------------------- | ---- | -------------------------------------------------------- |
+| GET    | `/api/collections`        | Yes  | List collections with link counts                        |
+| POST   | `/api/collections`        | Yes  | Create collection (name required, icon/colour optional)  |
+| PATCH  | `/api/collections/:id`    | Yes  | Update collection name, icon, or colour                  |
+| DELETE | `/api/collections/:id`    | Yes  | Delete collection (moves links to inbox first)           |
 
 ## CI/CD
 

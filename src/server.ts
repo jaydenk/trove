@@ -8,12 +8,14 @@ import { logger } from "./middleware/logger";
 import { TroveError } from "./lib/errors";
 import { getDb } from "./db/connection";
 
+import { registerAllPlugins } from "./plugins/index";
 import health from "./routes/health";
 import links from "./routes/links";
 import collections from "./routes/collections";
 import tags from "./routes/tags";
 import admin from "./routes/admin";
 import user from "./routes/user";
+import plugins from "./routes/plugins";
 
 const app = new Hono<{ Variables: AppVariables }>();
 
@@ -41,6 +43,7 @@ app.route("/", health);
 
 // Protected routes under /api/*: rate limit + auth
 const db = getDb();
+registerAllPlugins();
 app.use("/api/*", authMiddleware(db));
 app.use("/api/*", rateLimitMiddleware());
 
@@ -51,6 +54,7 @@ app.route("/", links);
 app.route("/", collections);
 app.route("/", tags);
 app.route("/", user);
+app.route("/", plugins);
 app.route("/", admin);
 
 // Serve frontend static files for production

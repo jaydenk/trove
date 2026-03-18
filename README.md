@@ -170,7 +170,7 @@ All API routes (under `/api/*`) require a `Authorization: Bearer <token>` header
 | ------ | ------------------------ | ---- | ------------------------------------------------------ |
 | GET    | `/api/links`             | Yes  | List links with pagination and filtering               |
 | POST   | `/api/links`             | Yes  | Create link (triggers async content extraction)        |
-| GET    | `/api/links/:id`         | Yes  | Get a single link with tags and full content           |
+| GET    | `/api/links/:id`         | Yes  | Get a single link with tags, content, and action history |
 | PATCH  | `/api/links/:id`         | Yes  | Update link title, collection, status, or replace tags |
 | DELETE | `/api/links/:id`         | Yes  | Delete link                                            |
 | POST   | `/api/links/:id/archive` | Yes  | Set link status to archived                            |
@@ -291,6 +291,7 @@ TroveLinkManager/
 │   │   ├── plugins.ts        # Plugin config, actions, and webhook routes
 │   │   └── __tests__/        # Route-level tests
 │   ├── plugins/
+│   │   ├── index.ts          # Barrel file that registers all shipped plugins
 │   │   ├── types.ts          # Plugin system type definitions (TrovePlugin, PluginInfo, etc.)
 │   │   ├── registry.ts       # Plugin registry (register, lookup, list, config status)
 │   │   ├── reader.ts         # Readwise Reader plugin (send links for reading later)

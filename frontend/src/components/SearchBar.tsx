@@ -1,14 +1,17 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
 
 export interface SearchBarProps {
   value: string;
   onChange: (value: string) => void;
 }
 
-export default function SearchBar({ value, onChange }: SearchBarProps) {
+const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>(function SearchBar({ value, onChange }, ref) {
   const [localValue, setLocalValue] = useState(value);
   const inputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Expose the input element to parent via forwarded ref
+  useImperativeHandle(ref, () => inputRef.current as HTMLInputElement);
 
   // Sync local value when the parent resets the controlled value (e.g. clearing)
   useEffect(() => {
@@ -92,4 +95,6 @@ export default function SearchBar({ value, onChange }: SearchBarProps) {
       )}
     </div>
   );
-}
+});
+
+export default SearchBar;

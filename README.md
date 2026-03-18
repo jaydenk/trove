@@ -10,6 +10,7 @@ Trove is a self-hosted personal link library for saving, organising, and searchi
 - **Tagging system** for flexible cross-collection categorisation
 - **Archive support** to keep links without cluttering your active view
 - **Filtering** by collection, tag, domain, status, or source
+- **Plugin system** for extending Trove with external services (Readwise Reader, Things, n8n)
 - **Multi-user** with token-based authentication and admin management
 - **Rate limiting** on write operations (60 requests/minute per token)
 - **Structured logging** via Pino with pretty-printing in development
@@ -252,6 +253,84 @@ The override file adds Traefik labels and connects the container to the external
 When a link is created, Trove asynchronously fetches the page and extracts readable content using [Mozilla Readability](https://github.com/mozilla/readability). If Readability cannot parse the page (e.g. minimal HTML without article structure), it falls back to OpenGraph meta tags (`og:title`, `og:description`, `og:image`).
 
 Favicons are resolved via Google's favicon service. Extracted content is truncated to a configurable maximum length (see environment variables above).
+
+## Plugin System
+
+Trove includes a plugin system that lets you extend link management with external services. Plugins can provide two capabilities:
+
+- **Execute actions** — perform an operation on a saved link (e.g. send it to a read-later service or create a task). These appear as action buttons on link cards and in the detail panel.
+- **Ingest links** — receive links from external automation tools via webhook, automatically saving them to Trove with tags and collection assignment.
+
+Plugins are configured per-user through the **Plugin Settings** screen in the UI (accessible from the sidebar). Each plugin defines its own configuration schema — fill in the required fields to activate a plugin for your account.
+
+### Shipped Plugins
+
+#### Readwise Reader
+
+Sends a link to [Readwise Reader](https://readwise.io/read) for reading later. Tags from Trove are forwarded to Reader automatically.
+
+**Configuration:**
+
+| Field              | Required | Description                                                                 |
+| ------------------ | -------- | --------------------------------------------------------------------------- |
+| `READWISE_TOKEN`   | Yes      | Your Readwise API token (find it at https://readwise.io/access_token)       |
+
+**Action:** Click the Reader button on any link to send it to your Reader library.
+
+#### Things
+
+Creates a task in [Things](https://culturedcode.com/things/) from a link. The link title becomes the task name and the URL is added to the task notes, tagged with `trove`. This plugin uses the Things URL scheme, so it works on macOS and iOS where Things is installed.
+
+**Configuration:** None required — this plugin works without any API keys.
+
+**Action:** Click the Things button on any link to open Things with a pre-filled task.
+
+#### n8n Webhook
+
+Receives links from [n8n](https://n8n.io) automation workflows via a webhook endpoint. Use this to pipe RSS feeds, email newsletters, or any other n8n data source into Trove.
+
+**Configuration:** None required.
+
+**Webhook endpoint:** `POST /api/plugins/n8n/webhook`
+
+**Authentication:** The webhook requires a Bearer token in the `Authorization` header, the same as all other API endpoints. The links are created under the user account that owns the token.
+
+**Payload format:**
+
+```json
+{
+  "items": [
+    {
+      "url": "https://example.com/article",
+      "title": "Optional title",
+      "collection": "reference",
+      "tags": ["automation", "rss"],
+      "source_feed": "https://example.com/feed.xml"
+    }
+  ]
+}
+```
+
+All fields except `url` are optional. The `collection` field matches by name — if no matching collection is found, the link goes to the inbox. Duplicate URLs are silently skipped.
+
+**Response:**
+
+```json
+{
+  "created": 2,
+  "skipped": 1,
+  "errors": []
+}
+```
+
+## Capture Methods
+
+Trove supports several ways to save links:
+
+- **Web UI** — use the "Add Link" button in the top bar to paste a URL manually.
+- **API** — `POST /api/links` with `{ "url": "..." }` from any HTTP client, script, or automation tool.
+- **n8n Webhook** — pipe links from n8n workflows via `POST /api/plugins/n8n/webhook` (see [n8n Webhook plugin](#n8n-webhook) above).
+- **iOS Shortcut** — save links directly from the iOS Share Sheet. See the [iOS Shortcut setup guide](docs/ios-shortcut.md) for step-by-step instructions.
 
 ## CI/CD
 

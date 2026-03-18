@@ -10,6 +10,7 @@ Trove is a self-hosted personal link library for saving, organising, and searchi
 - **Tagging system** for flexible cross-collection categorisation
 - **Archive support** to keep links without cluttering your active view
 - **Filtering** by collection, tag, domain, status, or source
+- **Import/export** bookmarks in HTML (Netscape), CSV, and JSON formats with round-trip support
 - **Plugin system** for extending Trove with external services (Readwise Reader, Things, n8n)
 - **MCP server** for AI assistant integration (search, browse, save links via Claude, etc.)
 - **Multi-user** with token-based authentication and admin management
@@ -257,6 +258,24 @@ When a link is created, Trove asynchronously fetches the page and extracts reada
 
 Favicons are resolved via Google's favicon service. Extracted content is truncated to a configurable maximum length (see environment variables above).
 
+## Import and Export
+
+Trove supports importing and exporting your link library in three formats:
+
+### Import Formats
+
+- **HTML Bookmarks** — standard Netscape bookmark format exported by Chrome, Firefox, and Safari. Folder names become collections, `ADD_DATE` timestamps are preserved, and Firefox `TAGS` attributes are imported.
+- **CSV** — comma-separated values with a header row. Required column: `url`. Optional columns: `title`, `description`, `tags` (comma-separated), `collection`.
+- **JSON** — either Trove's own `{ links: [...] }` format or a plain JSON array of objects. Each item must have a `url` field; `title`, `description`, `tags`, `collection`, and `createdAt` are optional.
+
+### Export Formats
+
+- **JSON** — pretty-printed Trove format with `exportedAt` timestamp and version, importable back into Trove.
+- **CSV** — RFC 4180 compliant with proper quoting. Tags are joined with semicolons to avoid CSV comma ambiguity.
+- **HTML Bookmarks** — Netscape bookmark format importable by any browser. Links are grouped by collection as folders.
+
+All three formats support round-trip: exporting and re-importing preserves URLs, titles, collections, and timestamps.
+
 ## Plugin System
 
 Trove includes a plugin system that lets you extend link management with external services. Plugins can provide two capabilities:
@@ -430,6 +449,8 @@ TroveLinkManager/
 │   │   └── __tests__/        # MCP tool logic tests
 │   ├── services/
 │   │   ├── extractor.ts      # Content extraction (Readability + OG fallback)
+│   │   ├── importer.ts       # Import parsers (HTML bookmarks, CSV, JSON)
+│   │   ├── exporter.ts       # Export generators (JSON, CSV, HTML bookmarks)
 │   │   └── __tests__/        # Service-level tests
 │   ├── server.ts             # Hono app assembly, route mounting, static file serving
 │   ├── seed.ts               # CLI script to create the first admin user

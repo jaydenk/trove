@@ -104,6 +104,18 @@ export function updateCollection(
     .get(id)!;
 }
 
+export function getCollectionByName(
+  db: Database,
+  userId: string,
+  name: string
+): Collection | null {
+  return db
+    .query<Collection, [string, string]>(
+      "SELECT * FROM collections WHERE user_id = ? AND name = ?"
+    )
+    .get(userId, name) as Collection | null;
+}
+
 export function deleteCollection(
   db: Database,
   userId: string,

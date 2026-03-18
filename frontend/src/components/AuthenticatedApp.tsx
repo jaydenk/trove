@@ -3,8 +3,7 @@ import { useLinks } from "../hooks/useLinks";
 import { useCollections } from "../hooks/useCollections";
 import { usePlugins } from "../hooks/usePlugins";
 import CollectionSidebar from "./CollectionSidebar";
-import CollectionManager from "./CollectionManager";
-import PluginSettings from "./PluginSettings";
+import SettingsView from "./SettingsView";
 import LinkCard from "./LinkCard";
 import LinkDetail from "./LinkDetail";
 import SearchBar from "./SearchBar";
@@ -48,8 +47,7 @@ export default function AuthenticatedApp({
   const [page, setPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [showCollectionManager, setShowCollectionManager] = useState(false);
-  const [showPluginSettings, setShowPluginSettings] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const { collections, refetch: refetchCollections } = useCollections();
   const { plugins, refetch: refetchPlugins } = usePlugins();
 
@@ -58,8 +56,7 @@ export default function AuthenticatedApp({
     setSelectedTag(null);
     setPage(1);
     setSelectedLinkId(null);
-    setShowCollectionManager(false);
-    setShowPluginSettings(false);
+    setShowSettings(false);
   };
 
   const handleSelectTag = (tag: string | null) => {
@@ -67,8 +64,7 @@ export default function AuthenticatedApp({
     setSelectedCollection(null);
     setPage(1);
     setSelectedLinkId(null);
-    setShowCollectionManager(false);
-    setShowPluginSettings(false);
+    setShowSettings(false);
   };
 
   const isSearching = searchQuery.trim().length > 0;
@@ -103,29 +99,16 @@ export default function AuthenticatedApp({
         onSelectCollection={handleSelectCollection}
         selectedTag={selectedTag}
         onSelectTag={handleSelectTag}
-        onManageCollections={() => {
-          setShowCollectionManager(true);
-          setShowPluginSettings(false);
-        }}
-        onManagePlugins={() => {
-          setShowPluginSettings(true);
-          setShowCollectionManager(false);
-        }}
-        activeSettingsView={showCollectionManager ? "collections" : showPluginSettings ? "plugins" : null}
+        onOpenSettings={() => setShowSettings(true)}
+        isSettingsActive={showSettings}
       />
 
-      {showCollectionManager ? (
-        <CollectionManager
+      {showSettings ? (
+        <SettingsView
           collections={collections}
-          onRefresh={refetchCollections}
-          onClose={() => setShowCollectionManager(false)}
-        />
-      ) : showPluginSettings ? (
-        <PluginSettings
-          onClose={() => {
-            setShowPluginSettings(false);
-            refetchPlugins();
-          }}
+          onRefreshCollections={refetchCollections}
+          onRefreshPlugins={refetchPlugins}
+          onClose={() => setShowSettings(false)}
         />
       ) : (
         <div className="flex flex-1 flex-col min-w-0">

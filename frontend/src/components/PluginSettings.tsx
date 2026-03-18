@@ -212,9 +212,10 @@ function PluginRow({
 
 export interface PluginSettingsProps {
   onClose: () => void;
+  hideHeader?: boolean;
 }
 
-export default function PluginSettings({ onClose }: PluginSettingsProps) {
+export default function PluginSettings({ onClose, hideHeader }: PluginSettingsProps) {
   const [plugins, setPlugins] = useState<PluginInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -236,8 +237,8 @@ export default function PluginSettings({ onClose }: PluginSettingsProps) {
 
   return (
     <div className="flex flex-1 flex-col min-w-0 h-full">
-      {/* Header */}
-      <header className="border-b border-border dark:border-dark-border px-5 py-4 flex items-center gap-3 shrink-0">
+      {!hideHeader && (
+        <header className="border-b border-border dark:border-dark-border px-5 py-4 flex items-center gap-3 shrink-0">
         <button
           type="button"
           onClick={onClose}
@@ -259,7 +260,8 @@ export default function PluginSettings({ onClose }: PluginSettingsProps) {
         <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
           Plugin Settings
         </h2>
-      </header>
+        </header>
+      )}
 
       {/* Plugin list */}
       <div className="flex-1 overflow-y-auto">

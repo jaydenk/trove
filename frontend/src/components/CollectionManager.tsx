@@ -10,6 +10,7 @@ export interface CollectionManagerProps {
   collections: Collection[];
   onRefresh: () => void;
   onClose: () => void;
+  hideHeader?: boolean;
 }
 
 interface EditState {
@@ -320,33 +321,27 @@ export default function CollectionManager({
   collections,
   onRefresh,
   onClose,
+  hideHeader,
 }: CollectionManagerProps) {
   return (
     <div className="flex flex-1 flex-col min-w-0 h-full">
-      {/* Header */}
-      <header className="border-b border-border dark:border-dark-border px-5 py-4 flex items-center gap-3 shrink-0">
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-muted dark:text-dark-muted hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
-          aria-label="Back"
-        >
-          <svg
-            className="h-5 w-5"
-            viewBox="0 0 20 20"
-            fill="currentColor"
+      {!hideHeader && (
+        <header className="border-b border-border dark:border-dark-border px-5 py-4 flex items-center gap-3 shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-muted dark:text-dark-muted hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
+            aria-label="Back"
           >
-            <path
-              fillRule="evenodd"
-              d="M17 10a.75.75 0 01-.75.75H5.612l4.158 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 011.04 1.08L5.612 9.25H16.25A.75.75 0 0117 10z"
-              clipRule="evenodd"
-            />
-          </svg>
-        </button>
-        <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
-          Manage Collections
-        </h2>
-      </header>
+            <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M17 10a.75.75 0 01-.75.75H5.612l4.158 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 111.04 1.08L5.612 9.25H16.25A.75.75 0 0117 10z" clipRule="evenodd" />
+            </svg>
+          </button>
+          <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
+            Manage Collections
+          </h2>
+        </header>
+      )}
 
       {/* Collection list */}
       <div className="flex-1 overflow-y-auto">

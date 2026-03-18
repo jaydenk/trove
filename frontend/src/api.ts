@@ -27,6 +27,7 @@ export interface Link {
   createdAt: string;
   updatedAt: string;
   tags?: Tag[];
+  actions?: LinkAction[];
   snippet?: string; // FTS search snippet
 }
 
@@ -44,6 +45,32 @@ export interface Tag {
   name: string;
   createdAt: string;
   linkCount?: number;
+}
+
+export interface PluginInfo {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  configSchema: Record<string, { label: string; type: string; required: boolean }>;
+  hasExecute: boolean;
+  executeType: "api-call" | "url-redirect" | null;
+  hasIngest: boolean;
+  isConfigured: boolean;
+}
+
+export interface PluginActionResult {
+  type: "success" | "redirect" | "error";
+  message?: string;
+  url?: string;
+}
+
+export interface LinkAction {
+  id: string;
+  pluginId: string;
+  status: string;
+  message: string | null;
+  createdAt: string;
 }
 
 export interface PaginatedResponse<T> {
@@ -264,6 +291,26 @@ export const api = {
 
     delete: (id: string) =>
       request<void>(`/collections/${id}`, { method: "DELETE" }),
+  },
+
+  plugins: {
+    list: () => request<PluginInfo[]>("/plugins"),
+
+    getConfig: (id: string) =>
+      request<{ config: Record<string, string>; schema: Record<string, any> }>(
+        `/plugins/${id}/config`,
+      ),
+
+    setConfig: (id: string, config: Record<string, string>) =>
+      request<Record<string, string>>(`/plugins/${id}/config`, {
+        method: "PUT",
+        body: JSON.stringify(config),
+      }),
+
+    executeAction: (linkId: string, pluginId: string) =>
+      request<PluginActionResult>(`/links/${linkId}/actions/${pluginId}`, {
+        method: "POST",
+      }),
   },
 
   tags: {

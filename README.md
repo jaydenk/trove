@@ -60,7 +60,13 @@ bun run dev:frontend
 TroveLinkManager/
 ├── src/
 │   ├── lib/
-│   │   └── id.ts             # nanoid wrapper for ID generation
+│   │   ├── id.ts             # nanoid wrapper for ID generation
+│   │   └── errors.ts         # Error classes (TroveError, NotFoundError, etc.)
+│   ├── middleware/
+│   │   ├── auth.ts           # Bearer token authentication middleware
+│   │   ├── logger.ts         # Pino-based request logging middleware
+│   │   └── rateLimit.ts      # In-memory sliding-window rate limiter
+│   ├── seed.ts               # CLI script to create the first admin user
 │   └── db/
 │       ├── connection.ts     # SQLite connection (singleton + test helper)
 │       ├── schema.ts         # DDL migrations (WAL, FK, FTS5)
@@ -95,6 +101,45 @@ Trove uses SQLite via Bun's built-in `bun:sqlite` driver with WAL mode and forei
 - **plugin_config** — Per-user plugin settings
 
 Set `TROVE_DB_PATH` in your `.env` to configure the database file location.
+
+## Authentication and Middleware
+
+### Authentication
+
+All API routes are protected by Bearer token authentication. Include an `Authorization: Bearer <token>` header with every request. Tokens are stored in the `users` table and looked up on each request.
+
+### Seeding the Admin User
+
+Before using the API, create the first admin user:
+
+```bash
+TROVE_ADMIN_TOKEN=your-secure-token bun run seed
+```
+
+This is idempotent — running it again with the same token will not create duplicates.
+
+### Rate Limiting
+
+Write operations (POST, PATCH, DELETE, PUT) are rate-limited to **60 requests per minute** per API token using an in-memory sliding window. Exceeding the limit returns a `429 Too Many Requests` response.
+
+### Request Logging
+
+All requests are logged via [Pino](https://getpino.io/) with method, path, status code, and response duration. In development, logs are pretty-printed via `pino-pretty`.
+
+### Error Handling
+
+The API returns structured JSON errors:
+
+```json
+{
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "Not found"
+  }
+}
+```
+
+Error codes: `NOT_FOUND` (404), `UNAUTHORIZED` (401), `FORBIDDEN` (403), `VALIDATION_ERROR` (400), `DUPLICATE_URL` (409), `RATE_LIMITED` (429).
 
 ## CI/CD
 

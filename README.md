@@ -90,7 +90,12 @@ TroveLinkManager/
 │       └── __tests__/        # Database layer tests
 ├── frontend/                 # React + Vite frontend
 │   ├── src/
-│   │   ├── App.tsx
+│   │   ├── api.ts           # Typed API client with fetch wrapper
+│   │   ├── hooks/
+│   │   │   └── useAuth.ts   # Auth state hook (token validation, login/logout)
+│   │   ├── components/
+│   │   │   └── LoginScreen.tsx  # Token login screen
+│   │   ├── App.tsx          # Root component with auth gating
 │   │   ├── main.tsx
 │   │   └── index.css
 │   ├── index.html

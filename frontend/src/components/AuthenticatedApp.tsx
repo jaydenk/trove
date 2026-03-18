@@ -165,6 +165,11 @@ export default function AuthenticatedApp({
             </div>
           </header>
 
+          {/* DEBUG: remove after fixing sidebar */}
+          <div className="px-6 py-1 bg-yellow-100 dark:bg-yellow-900 text-xs text-yellow-800 dark:text-yellow-200 shrink-0">
+            DEBUG: collection={selectedCollection ?? "null"} | tag={selectedTag ?? "null"} | search={searchQuery || "null"} | links={links.length} | filters={JSON.stringify(linkFilters)}
+          </div>
+
           <main className="flex-1 overflow-y-auto">
             {linksLoading ? (
               <div className="flex items-center justify-center py-20">

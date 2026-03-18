@@ -64,10 +64,7 @@ export default function CollectionSidebar({
           {/* All links */}
           <button
             type="button"
-            onClick={() => {
-              onSelectCollection(null);
-              onSelectTag(null);
-            }}
+            onClick={() => onSelectCollection(null)}
             className={`${itemBase} ${!activeSettingsView &&selectedCollection === null && selectedTag === null ? itemActive : itemIdle}`}
           >
             <span className="w-5 text-center">{"*"}</span>
@@ -83,10 +80,7 @@ export default function CollectionSidebar({
               <button
                 key={c.id}
                 type="button"
-                onClick={() => {
-                  onSelectCollection(c.id);
-                  onSelectTag(null);
-                }}
+                onClick={() => onSelectCollection(c.id)}
                 className={`${itemBase} ${!activeSettingsView &&selectedCollection === c.id ? itemActive : itemIdle}`}
               >
                 <span className="w-5 text-center">{c.icon ?? "📁"}</span>
@@ -101,11 +95,8 @@ export default function CollectionSidebar({
           {/* Archive virtual entry */}
           <button
             type="button"
-            onClick={() => {
-              onSelectCollection("archive");
-              onSelectTag(null);
-            }}
-            className={`${itemBase} ${!activeSettingsView &&selectedCollection === "archive" ? itemActive : itemIdle}`}
+            onClick={() => onSelectCollection("archive")}
+            className={`${itemBase} ${!activeSettingsView && selectedCollection === "archive" ? itemActive : itemIdle}`}
           >
             <span className="w-5 text-center">🗄️</span>
             <span className="flex-1 truncate text-left">Archive</span>
@@ -134,10 +125,7 @@ export default function CollectionSidebar({
               <button
                 key={t.id}
                 type="button"
-                onClick={() => {
-                  onSelectTag(t.name);
-                  onSelectCollection(null);
-                }}
+                onClick={() => onSelectTag(t.name)}
                 className={`${itemBase} ${!activeSettingsView &&selectedTag === t.name ? itemActive : itemIdle}`}
               >
                 <span className="w-5 text-center text-muted dark:text-dark-muted">

@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="icon.png" alt="Trove" width="128" height="128">
+</p>
+
 # Trove
 
 A self-hosted link inbox — save links from anywhere, route them to where they need to go.

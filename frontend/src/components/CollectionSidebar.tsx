@@ -39,7 +39,7 @@ export default function CollectionSidebar({
         <button
           type="button"
           onClick={() => onSelectCollection(null)}
-          className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 tracking-tight hover:opacity-70 transition-opacity"
+          className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 tracking-tight hover:opacity-70 transition-opacity cursor-pointer"
         >
           Trove
         </button>

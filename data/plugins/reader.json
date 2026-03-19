@@ -1,0 +1,30 @@
+{
+  "id": "reader",
+  "name": "Readwise Reader",
+  "icon": "\ud83d\udcd6",
+  "description": "Send links to Readwise Reader for reading later",
+  "version": "1.0.0",
+  "direction": "export",
+  "config": {
+    "READWISE_TOKEN": {
+      "label": "Readwise API Token",
+      "type": "string",
+      "required": true
+    }
+  },
+  "execute": {
+    "type": "api-call",
+    "actionLabel": "Send to Reader",
+    "method": "POST",
+    "url": "https://readwise.io/api/v3/save/",
+    "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Token {{config.READWISE_TOKEN}}"
+    },
+    "body": {
+      "url": "{{link.url}}",
+      "tags": "{{link.tagsArray}}"
+    },
+    "successMessage": "Sent to Readwise Reader"
+  }
+}

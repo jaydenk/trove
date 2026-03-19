@@ -1,0 +1,19 @@
+{
+  "id": "n8n",
+  "name": "n8n Webhook",
+  "icon": "\ud83d\udd17",
+  "description": "Receive links from n8n automation workflows",
+  "version": "1.0.0",
+  "direction": "ingest",
+  "config": {},
+  "ingest": {
+    "description": "Receive links from n8n automation workflows",
+    "itemMapping": {
+      "url": "$.url",
+      "title": "$.title",
+      "tags": "$.tags",
+      "collection": "$.collection",
+      "sourceFeed": "$.source_feed"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "id": "things",
+  "name": "Things",
+  "icon": "\u2705",
+  "description": "Create a task in Things from a link",
+  "version": "1.0.0",
+  "direction": "export",
+  "config": {},
+  "execute": {
+    "type": "url-redirect",
+    "actionLabel": "Send to Things",
+    "urlTemplate": "things:///add?title={{link.title|urlencode}}&notes={{link.url|urlencode}}&tags=trove"
+  }
+}

@@ -8,7 +8,7 @@ import { logger } from "./middleware/logger";
 import { TroveError } from "./lib/errors";
 import { getDb } from "./db/connection";
 
-import { registerAllPlugins } from "./plugins/index";
+import { seedSystemPlugins } from "./seed";
 import health from "./routes/health";
 import auth from "./routes/auth";
 import links from "./routes/links";
@@ -46,7 +46,7 @@ app.route("/", auth);
 
 // Protected routes under /api/*: rate limit + auth
 const db = getDb();
-registerAllPlugins();
+seedSystemPlugins(db);
 app.use("/api/*", authMiddleware(db));
 app.use("/api/*", rateLimitMiddleware());
 

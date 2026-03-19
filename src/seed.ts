@@ -1,4 +1,6 @@
 import type { Database } from "bun:sqlite";
+import { readFileSync, readdirSync } from "fs";
+import { join } from "path";
 import {
   findByToken,
   findByUsername,
@@ -6,12 +8,69 @@ import {
   createUserWithPassword,
 } from "./db/queries/users";
 import { seedDefaultCollections } from "./db/queries/collections";
+import { insertPlugin, getPluginById, enableAllSystemPluginsForUser } from "./db/queries/plugins";
+import { validateManifest } from "./plugins/manifest";
 
 export interface SeedResult {
   created: boolean;
   userId: string;
   apiToken?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Seed System Plugins
+// ---------------------------------------------------------------------------
+
+/**
+ * Load JSON manifests from data/plugins/ and insert them as system plugins.
+ * Skips any that already exist in the database. Safe to call repeatedly.
+ */
+export function seedSystemPlugins(db: Database): void {
+  const pluginsDir = join(import.meta.dir, "..", "data", "plugins");
+  let files: string[];
+  try {
+    files = readdirSync(pluginsDir).filter((f) => f.endsWith(".json"));
+  } catch {
+    // Directory doesn't exist — nothing to seed
+    return;
+  }
+
+  for (const file of files) {
+    const filePath = join(pluginsDir, file);
+    const raw = readFileSync(filePath, "utf-8");
+
+    let json: unknown;
+    try {
+      json = JSON.parse(raw);
+    } catch {
+      console.warn(`Warning: Skipping invalid JSON in ${file}`);
+      continue;
+    }
+
+    const result = validateManifest(json);
+    if (!result.valid) {
+      console.warn(
+        `Warning: Skipping invalid manifest ${file}: ${result.errors.join("; ")}`
+      );
+      continue;
+    }
+
+    const existing = getPluginById(db, result.manifest.id);
+    if (existing) {
+      // Update the manifest for system plugins in case it changed
+      if (existing.is_system === 1) {
+        insertPlugin(db, result.manifest, true);
+      }
+      continue;
+    }
+
+    insertPlugin(db, result.manifest, true);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Seed Admin User
+// ---------------------------------------------------------------------------
 
 /**
  * Core seed logic (legacy token-based) — importable for testing.
@@ -32,6 +91,7 @@ export function seedAdmin(db: Database, adminToken: string): SeedResult {
   });
 
   seedDefaultCollections(db, user.id);
+  enableAllSystemPluginsForUser(db, user.id);
 
   return { created: true, userId: user.id };
 }
@@ -58,6 +118,7 @@ export async function seedAdminWithPassword(
   });
 
   seedDefaultCollections(db, user.id);
+  enableAllSystemPluginsForUser(db, user.id);
 
   return { created: true, userId: user.id, apiToken: user.api_token };
 }
@@ -79,6 +140,9 @@ if (import.meta.main) {
   const db = getDb();
 
   try {
+    // Seed system plugins first
+    seedSystemPlugins(db);
+
     if (adminPassword) {
       const result = await seedAdminWithPassword(db, adminPassword);
       if (result.created) {

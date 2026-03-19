@@ -52,9 +52,15 @@ seedSystemPlugins(db);
 app.use("/api/*", authMiddleware(db));
 app.use("/api/*", rateLimitMiddleware());
 
+// Serve frontend static files BEFORE API routers
+// (must come before admin router whose use("/*") guard leaks to subsequent handlers)
+app.use(
+  "/*",
+  serveStatic({ root: "./frontend/dist" }),
+);
+
 // API routers — admin is mounted last because its internal use("/*") guard
-// would apply to any route registered after it in the same app. By mounting
-// it after all other routers, we ensure the guard only affects admin paths.
+// would apply to any route registered after it in the same app.
 app.route("/", links);
 app.route("/", collections);
 app.route("/", tags);
@@ -63,13 +69,7 @@ app.route("/", plugins);
 app.route("/", importExport);
 app.route("/", admin);
 
-// Serve frontend static files for production
-app.use(
-  "/*",
-  serveStatic({ root: "./frontend/dist" }),
-);
-
-// SPA fallback: serve index.html for any unmatched routes
+// SPA fallback: serve index.html for any unmatched routes (after all API routes)
 app.get("*", serveStatic({ path: "./frontend/dist/index.html" }));
 
 export { app };

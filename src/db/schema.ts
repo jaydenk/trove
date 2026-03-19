@@ -94,6 +94,29 @@ export function runMigrations(db: Database): void {
     );
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS plugins (
+      id          TEXT PRIMARY KEY,
+      manifest    TEXT NOT NULL,
+      name        TEXT NOT NULL,
+      icon        TEXT,
+      description TEXT,
+      direction   TEXT NOT NULL,
+      version     TEXT,
+      is_system   INTEGER DEFAULT 0,
+      created_at  TEXT DEFAULT (datetime('now'))
+    );
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_plugins (
+      user_id   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      plugin_id TEXT NOT NULL REFERENCES plugins(id) ON DELETE CASCADE,
+      enabled   INTEGER DEFAULT 1,
+      PRIMARY KEY (user_id, plugin_id)
+    );
+  `);
+
   // Migration: add username + password_hash columns to users table
   const userColumns = db
     .query<{ name: string }, []>("PRAGMA table_info(users)")

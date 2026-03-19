@@ -13,18 +13,84 @@ import { createUser } from "../../db/queries/users";
 import { seedDefaultCollections } from "../../db/queries/collections";
 import { authMiddleware, type AppVariables } from "../../middleware/auth";
 import { TroveError } from "../../lib/errors";
-import { registerPlugin, clearPlugins } from "../../plugins/registry";
-import { thingsPlugin } from "../../plugins/things";
-import { readerPlugin } from "../../plugins/reader";
-import { n8nPlugin } from "../../plugins/n8n";
+import { insertPlugin, enablePluginForUser } from "../../db/queries/plugins";
 import { setPluginConfig } from "../../db/queries/pluginConfig";
 import { listActionsForLink } from "../../db/queries/linkActions";
+import { seedSystemPlugins } from "../../seed";
 import plugins from "../plugins";
 
 // Mock extractor to prevent real HTTP calls
 mock.module("../../services/extractor", () => ({
   extractAndUpdate: () => {},
 }));
+
+// JSON manifests for testing
+const thingsManifest = {
+  id: "things",
+  name: "Things",
+  icon: "\u2705",
+  description: "Create a task in Things from a link",
+  version: "1.0.0",
+  direction: "export" as const,
+  config: {},
+  execute: {
+    type: "url-redirect" as const,
+    actionLabel: "Send to Things",
+    urlTemplate:
+      "things:///add?title={{link.title|urlencode}}&notes={{link.url|urlencode}}&tags=trove",
+  },
+};
+
+const readerManifest = {
+  id: "reader",
+  name: "Readwise Reader",
+  icon: "\ud83d\udcd6",
+  description: "Send links to Readwise Reader for reading later",
+  version: "1.0.0",
+  direction: "export" as const,
+  config: {
+    READWISE_TOKEN: {
+      label: "Readwise API Token",
+      type: "string" as const,
+      required: true,
+    },
+  },
+  execute: {
+    type: "api-call" as const,
+    actionLabel: "Send to Reader",
+    method: "POST",
+    url: "https://readwise.io/api/v3/save/",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Token {{config.READWISE_TOKEN}}",
+    },
+    body: {
+      url: "{{link.url}}",
+      tags: "{{link.tagsArray}}",
+    },
+    successMessage: "Sent to Readwise Reader",
+  },
+};
+
+const n8nManifest = {
+  id: "n8n",
+  name: "n8n Webhook",
+  icon: "\ud83d\udd17",
+  description: "Receive links from n8n automation workflows",
+  version: "1.0.0",
+  direction: "ingest" as const,
+  config: {},
+  ingest: {
+    description: "Receive links from n8n automation workflows",
+    itemMapping: {
+      url: "$.url",
+      title: "$.title",
+      tags: "$.tags",
+      collection: "$.collection",
+      sourceFeed: "$.source_feed",
+    },
+  },
+};
 
 describe("plugin routes", () => {
   let db: Database;
@@ -40,8 +106,6 @@ describe("plugin routes", () => {
       getDb: () => db,
       createTestDb,
     }));
-
-    clearPlugins();
 
     const user = createUser(db, {
       name: "TestUser",
@@ -83,6 +147,15 @@ describe("plugin routes", () => {
     return app;
   }
 
+  function seedPlugins() {
+    insertPlugin(db, thingsManifest, true);
+    insertPlugin(db, readerManifest, true);
+    insertPlugin(db, n8nManifest, true);
+    enablePluginForUser(db, userId, "things");
+    enablePluginForUser(db, userId, "reader");
+    enablePluginForUser(db, userId, "n8n");
+  }
+
   function insertLink(
     id: string,
     url: string,
@@ -106,9 +179,8 @@ describe("plugin routes", () => {
   }
 
   describe("GET /api/plugins", () => {
-    test("returns list of registered plugins with config status", async () => {
-      registerPlugin(thingsPlugin);
-      registerPlugin(readerPlugin);
+    test("returns list of plugins with config status", async () => {
+      seedPlugins();
       const app = createApp();
 
       const res = await app.request("/api/plugins", {
@@ -118,25 +190,29 @@ describe("plugin routes", () => {
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(Array.isArray(body)).toBe(true);
-      expect(body.length).toBe(2);
+      expect(body.length).toBe(3);
 
       const things = body.find((p: { id: string }) => p.id === "things");
       expect(things).toBeDefined();
       expect(things.name).toBe("Things");
       expect(things.hasExecute).toBe(true);
       expect(things.isConfigured).toBe(true); // no required config
+      expect(things.direction).toBe("export");
+      expect(things.enabled).toBe(true);
+      expect(things.isSystem).toBe(true);
 
       const reader = body.find((p: { id: string }) => p.id === "reader");
       expect(reader).toBeDefined();
       expect(reader.name).toBe("Readwise Reader");
       expect(reader.hasExecute).toBe(true);
       expect(reader.isConfigured).toBe(false); // missing READWISE_TOKEN
+      expect(reader.direction).toBe("export");
     });
   });
 
   describe("GET /api/plugins/:id/config", () => {
     test("returns config and schema", async () => {
-      registerPlugin(readerPlugin);
+      seedPlugins();
       setPluginConfig(db, userId, "reader", {
         READWISE_TOKEN: "my-secret-token",
       });
@@ -168,7 +244,7 @@ describe("plugin routes", () => {
 
   describe("PUT /api/plugins/:id/config", () => {
     test("sets config", async () => {
-      registerPlugin(readerPlugin);
+      seedPlugins();
       const app = createApp();
 
       const res = await app.request("/api/plugins/reader/config", {
@@ -186,9 +262,145 @@ describe("plugin routes", () => {
     });
   });
 
+  describe("PUT /api/plugins/:id/enable and disable", () => {
+    test("enables and disables a plugin for the user", async () => {
+      seedPlugins();
+      const app = createApp();
+
+      // Disable
+      const disableRes = await app.request("/api/plugins/things/disable", {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      expect(disableRes.status).toBe(200);
+      const disableBody = await disableRes.json();
+      expect(disableBody.enabled).toBe(false);
+
+      // Check list
+      const listRes = await app.request("/api/plugins", {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      const listBody = await listRes.json();
+      const things = listBody.find((p: { id: string }) => p.id === "things");
+      expect(things.enabled).toBe(false);
+
+      // Re-enable
+      const enableRes = await app.request("/api/plugins/things/enable", {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      expect(enableRes.status).toBe(200);
+      const enableBody = await enableRes.json();
+      expect(enableBody.enabled).toBe(true);
+    });
+  });
+
+  describe("POST /api/plugins (upload)", () => {
+    test("admin can upload a custom plugin", async () => {
+      // Make user admin
+      db.query("UPDATE users SET is_admin = 1 WHERE id = ?").run(userId);
+      const app = createApp();
+
+      const customManifest = {
+        id: "custom-test",
+        name: "Custom Test",
+        direction: "export",
+        config: {},
+        execute: {
+          type: "url-redirect",
+          actionLabel: "Test",
+          urlTemplate: "https://example.com/{{link.url|urlencode}}",
+        },
+      };
+
+      const res = await app.request("/api/plugins", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${userToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(customManifest),
+      });
+
+      expect(res.status).toBe(201);
+      const body = await res.json();
+      expect(body.id).toBe("custom-test");
+      expect(body.name).toBe("Custom Test");
+      expect(body.isSystem).toBe(false);
+    });
+
+    test("non-admin cannot upload a plugin", async () => {
+      const app = createApp();
+
+      const res = await app.request("/api/plugins", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${userToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: "blocked",
+          name: "Blocked",
+          direction: "export",
+          execute: {
+            type: "url-redirect",
+            actionLabel: "X",
+            urlTemplate: "https://x.com",
+          },
+        }),
+      });
+
+      expect(res.status).toBe(403);
+    });
+  });
+
+  describe("DELETE /api/plugins/:id", () => {
+    test("admin can delete non-system plugin", async () => {
+      db.query("UPDATE users SET is_admin = 1 WHERE id = ?").run(userId);
+      insertPlugin(
+        db,
+        {
+          id: "deletable",
+          name: "Deletable",
+          direction: "export",
+          config: {},
+          execute: {
+            type: "url-redirect",
+            actionLabel: "X",
+            urlTemplate: "https://x.com",
+          },
+        },
+        false
+      );
+      const app = createApp();
+
+      const res = await app.request("/api/plugins/deletable", {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+
+      expect(res.status).toBe(204);
+    });
+
+    test("admin cannot delete system plugin", async () => {
+      db.query("UPDATE users SET is_admin = 1 WHERE id = ?").run(userId);
+      seedPlugins();
+      const app = createApp();
+
+      const res = await app.request("/api/plugins/things", {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error.message).toContain("system");
+    });
+  });
+
   describe("POST /api/links/:id/actions/:pluginId", () => {
     test("executes action (things plugin — returns redirect URL)", async () => {
-      registerPlugin(thingsPlugin);
+      seedPlugins();
       insertLink("link-action-1", "https://example.com", "Example Article");
       const app = createApp();
 
@@ -212,7 +424,7 @@ describe("plugin routes", () => {
     });
 
     test("records action in link_actions", async () => {
-      registerPlugin(thingsPlugin);
+      seedPlugins();
       insertLink("link-action-2", "https://example.com/record", "Record Test");
       const app = createApp();
 
@@ -233,7 +445,7 @@ describe("plugin routes", () => {
     });
 
     test("returns 400 for unconfigured plugin (reader without token)", async () => {
-      registerPlugin(readerPlugin);
+      seedPlugins();
       insertLink(
         "link-action-3",
         "https://example.com/unconfig",
@@ -260,7 +472,7 @@ describe("plugin routes", () => {
     });
 
     test("returns 404 for non-existent link", async () => {
-      registerPlugin(thingsPlugin);
+      seedPlugins();
       const app = createApp();
 
       const res = await app.request(
@@ -281,7 +493,7 @@ describe("plugin routes", () => {
     });
 
     test("returns 404 for another user's link (user isolation)", async () => {
-      registerPlugin(thingsPlugin);
+      seedPlugins();
 
       // Create another user and their link
       const otherToken = "other-token-456";
@@ -325,7 +537,7 @@ describe("plugin routes", () => {
 
   describe("POST /api/plugins/:id/webhook", () => {
     test("accepts ingest payload (n8n)", async () => {
-      registerPlugin(n8nPlugin);
+      seedPlugins();
       const app = createApp();
 
       const res = await app.request("/api/plugins/n8n/webhook", {
@@ -360,7 +572,7 @@ describe("plugin routes", () => {
     });
 
     test("returns 400 for non-ingest plugin (things)", async () => {
-      registerPlugin(thingsPlugin);
+      seedPlugins();
       const app = createApp();
 
       const res = await app.request("/api/plugins/things/webhook", {
@@ -381,7 +593,7 @@ describe("plugin routes", () => {
 
   describe("authentication", () => {
     test("GET /api/plugins returns 401 without auth token", async () => {
-      registerPlugin(thingsPlugin);
+      seedPlugins();
       const app = createApp();
 
       const res = await app.request("/api/plugins");
@@ -389,7 +601,7 @@ describe("plugin routes", () => {
     });
 
     test("GET /api/plugins/:id/config returns 401 without auth token", async () => {
-      registerPlugin(thingsPlugin);
+      seedPlugins();
       const app = createApp();
 
       const res = await app.request("/api/plugins/things/config");
@@ -397,7 +609,7 @@ describe("plugin routes", () => {
     });
 
     test("PUT /api/plugins/:id/config returns 401 without auth token", async () => {
-      registerPlugin(readerPlugin);
+      seedPlugins();
       const app = createApp();
 
       const res = await app.request("/api/plugins/reader/config", {
@@ -409,7 +621,7 @@ describe("plugin routes", () => {
     });
 
     test("POST /api/links/:id/actions/:pluginId returns 401 without auth token", async () => {
-      registerPlugin(thingsPlugin);
+      seedPlugins();
       const app = createApp();
 
       const res = await app.request("/api/links/some-link/actions/things", {
@@ -421,7 +633,7 @@ describe("plugin routes", () => {
     });
 
     test("POST /api/plugins/:id/webhook returns 401 without auth token", async () => {
-      registerPlugin(n8nPlugin);
+      seedPlugins();
       const app = createApp();
 
       const res = await app.request("/api/plugins/n8n/webhook", {

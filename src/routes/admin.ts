@@ -3,6 +3,7 @@ import type { AppVariables } from "../middleware/auth";
 import { getDb } from "../db/connection";
 import { createUserWithPassword, listUsers, deleteUser } from "../db/queries/users";
 import { seedDefaultCollections } from "../db/queries/collections";
+import { enableAllSystemPluginsForUser } from "../db/queries/plugins";
 import { ForbiddenError, ValidationError } from "../lib/errors";
 
 const admin = new Hono<{ Variables: AppVariables }>();
@@ -62,6 +63,7 @@ admin.post("/api/admin/users", async (c) => {
   });
 
   seedDefaultCollections(db, user.id);
+  enableAllSystemPluginsForUser(db, user.id);
 
   return c.json(
     {

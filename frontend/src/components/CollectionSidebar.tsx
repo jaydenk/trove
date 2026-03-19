@@ -36,9 +36,13 @@ export default function CollectionSidebar({
     <aside className="w-56 shrink-0 border-r border-border dark:border-dark-border bg-surface dark:bg-dark flex flex-col h-screen overflow-y-auto">
       {/* Logo / header */}
       <div className="px-4 py-4">
-        <h1 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 tracking-tight">
+        <button
+          type="button"
+          onClick={() => onSelectCollection(null)}
+          className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 tracking-tight hover:opacity-70 transition-opacity"
+        >
           Trove
-        </h1>
+        </button>
       </div>
 
       {/* Collections section */}

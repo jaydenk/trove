@@ -17,3 +17,18 @@
 
   --font-sans: system-ui, -apple-system, sans-serif;
 }
+
+/* Prevent horizontal overflow on mobile */
+html,
+body {
+  overflow-x: hidden;
+}
+
+/* Hide scrollbar for horizontal-scroll containers (e.g. settings tabs) */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}

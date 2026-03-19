@@ -32,7 +32,7 @@ export default function SettingsView({
   const [activeTab, setActiveTab] = useState<SettingsTab>("appearance");
 
   const tabBase =
-    "px-4 py-2 text-sm font-medium transition-colors border-b-2";
+    "px-4 py-2 text-sm font-medium transition-colors border-b-2 whitespace-nowrap shrink-0";
   const tabActive =
     "text-neutral-900 dark:text-neutral-100 border-neutral-900 dark:border-neutral-100";
   const tabIdle =
@@ -67,7 +67,7 @@ export default function SettingsView({
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-0 px-6 mt-3">
+        <div className="flex gap-0 px-6 mt-3 overflow-x-auto -mx-0 scrollbar-none">
           <button
             type="button"
             onClick={() => setActiveTab("account")}

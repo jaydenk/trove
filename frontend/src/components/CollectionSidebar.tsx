@@ -33,7 +33,7 @@ export default function CollectionSidebar({
     "bg-hover dark:bg-dark-hover text-neutral-900 dark:text-neutral-100 font-medium";
 
   return (
-    <aside className="w-56 shrink-0 border-r border-border dark:border-dark-border bg-surface dark:bg-dark flex flex-col h-screen overflow-y-auto">
+    <aside className="w-56 shrink-0 border-r border-border dark:border-dark-border bg-surface dark:bg-dark flex flex-col h-dvh overflow-y-auto">
       {/* Logo / header */}
       <div className="px-4 py-4">
         <button

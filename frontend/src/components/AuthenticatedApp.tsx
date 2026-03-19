@@ -330,7 +330,7 @@ export default function AuthenticatedApp({
   const isBulkMode = selectedLinkIds.size > 0;
 
   return (
-    <div className="flex h-screen bg-surface dark:bg-dark">
+    <div className="flex h-dvh bg-surface dark:bg-dark overflow-x-hidden">
       {/* Desktop sidebar */}
       <div className="hidden lg:block">
         <CollectionSidebar
@@ -371,15 +371,23 @@ export default function AuthenticatedApp({
       )}
 
       {showSettings ? (
-        <SettingsView
-          collections={collections}
-          onRefreshCollections={refetchCollections}
-          onRefreshPlugins={refetchPlugins}
-          onClose={() => setShowSettings(false)}
-          theme={theme}
-          onThemeChange={setTheme}
-          user={user}
-        />
+        <div className="flex flex-1 flex-col min-w-0">
+          {/* Mobile nav for settings — allows navigating back */}
+          <MobileNav
+            onToggleSidebar={() => setIsMobileSidebarOpen((v) => !v)}
+            onOpenAddModal={() => setIsAddModalOpen(true)}
+            currentView="Settings"
+          />
+          <SettingsView
+            collections={collections}
+            onRefreshCollections={refetchCollections}
+            onRefreshPlugins={refetchPlugins}
+            onClose={() => setShowSettings(false)}
+            theme={theme}
+            onThemeChange={setTheme}
+            user={user}
+          />
+        </div>
       ) : (
         <div className="flex flex-1 flex-col min-w-0">
           {/* Mobile nav bar */}
@@ -387,6 +395,12 @@ export default function AuthenticatedApp({
             onToggleSidebar={() => setIsMobileSidebarOpen((v) => !v)}
             onOpenAddModal={() => setIsAddModalOpen(true)}
             currentView={currentViewName}
+            searchQuery={searchQuery}
+            onSearchChange={(v) => {
+              setSearchQuery(v);
+              setPage(1);
+              setSelectedLinkId(null);
+            }}
           />
 
           {/* Desktop header */}

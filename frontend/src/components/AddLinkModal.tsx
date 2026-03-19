@@ -346,7 +346,7 @@ export default function AddLinkModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
       role="dialog"
       aria-modal="true"
       aria-label="Add link"
@@ -358,9 +358,9 @@ export default function AddLinkModal({
       />
 
       {/* Modal card */}
-      <div className="relative w-full max-w-lg mx-4 rounded-xl bg-card dark:bg-dark-card border border-border dark:border-dark-border shadow-xl">
+      <div className="relative w-full max-w-lg sm:mx-4 rounded-t-xl sm:rounded-xl bg-card dark:bg-dark-card border border-border dark:border-dark-border shadow-xl max-h-[90dvh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border dark:border-dark-border">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border dark:border-dark-border shrink-0">
           <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
             Add Link
           </h2>
@@ -377,7 +377,7 @@ export default function AddLinkModal({
         </div>
 
         {/* Body */}
-        <div className="px-5 py-4 space-y-4">
+        <div className="px-5 py-4 space-y-4 overflow-y-auto min-h-0 flex-1">
           {/* URL input — always shown */}
           <div>
             <label
@@ -529,7 +529,7 @@ export default function AddLinkModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-border dark:border-dark-border">
+        <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-border dark:border-dark-border shrink-0">
           <button
             type="button"
             onClick={handleCancel}

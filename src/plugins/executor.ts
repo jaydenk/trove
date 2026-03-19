@@ -1,0 +1,249 @@
+import type { Database } from "bun:sqlite";
+import type {
+  PluginManifest,
+  ApiCallExecute,
+  UrlRedirectExecute,
+} from "./manifest";
+import type { TemplateContext } from "./template";
+import { interpolate, interpolateObject } from "./template";
+import { createLink, updateLink } from "../db/queries/links";
+import { getCollectionByName } from "../db/queries/collections";
+import { getOrCreateTag, addTagToLink } from "../db/queries/tags";
+import { extractAndUpdate } from "../services/extractor";
+
+// ---------------------------------------------------------------------------
+// Execute Result Types
+// ---------------------------------------------------------------------------
+
+export type PluginResult =
+  | { type: "success"; message: string }
+  | { type: "redirect"; url: string }
+  | { type: "error"; message: string };
+
+// ---------------------------------------------------------------------------
+// Execute Plugin
+// ---------------------------------------------------------------------------
+
+export async function executePlugin(
+  manifest: PluginManifest,
+  context: TemplateContext
+): Promise<PluginResult> {
+  if (!manifest.execute) {
+    return { type: "error", message: "Plugin has no execute block" };
+  }
+
+  const exec = manifest.execute;
+
+  if (exec.type === "api-call") {
+    return executeApiCall(exec, context);
+  }
+
+  if (exec.type === "url-redirect") {
+    return executeUrlRedirect(exec, context);
+  }
+
+  return { type: "error", message: `Unknown execute type: ${(exec as { type: string }).type}` };
+}
+
+async function executeApiCall(
+  exec: ApiCallExecute,
+  context: TemplateContext
+): Promise<PluginResult> {
+  try {
+    const url = interpolate(exec.url, context);
+    const method = exec.method;
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (exec.headers) {
+      for (const [key, value] of Object.entries(exec.headers)) {
+        headers[key] = interpolate(value, context);
+      }
+    }
+
+    let body: string | undefined;
+    if (exec.body) {
+      const interpolatedBody = interpolateObject(
+        exec.body as Record<string, unknown>,
+        context
+      );
+      body = JSON.stringify(interpolatedBody);
+    }
+
+    const response = await fetch(url, { method, headers, body });
+
+    if (!response.ok) {
+      const text = await response.text();
+      return {
+        type: "error",
+        message: `API returned ${response.status}: ${text}`,
+      };
+    }
+
+    return {
+      type: "success",
+      message: exec.successMessage || "Action completed",
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Unknown error";
+    return { type: "error", message };
+  }
+}
+
+function executeUrlRedirect(
+  exec: UrlRedirectExecute,
+  context: TemplateContext
+): PluginResult {
+  const url = interpolate(exec.urlTemplate, context);
+  return { type: "redirect", url };
+}
+
+// ---------------------------------------------------------------------------
+// Ingest Handler
+// ---------------------------------------------------------------------------
+
+export interface IngestResult {
+  created: number;
+  skipped: number;
+  errors: string[];
+}
+
+/**
+ * Resolve a JSONPath-like dot notation against an object.
+ * e.g. "$.url" -> item.url, "$.nested.field" -> item.nested.field
+ */
+function resolveJsonPath(obj: unknown, path: string): unknown {
+  if (typeof obj !== "object" || obj === null) return undefined;
+
+  // Strip the leading "$." prefix if present
+  const cleanPath = path.startsWith("$.") ? path.slice(2) : path;
+  const parts = cleanPath.split(".");
+
+  let current: unknown = obj;
+  for (const part of parts) {
+    if (current === null || current === undefined) return undefined;
+    if (typeof current !== "object") return undefined;
+    current = (current as Record<string, unknown>)[part];
+  }
+
+  return current;
+}
+
+export async function handleIngest(
+  manifest: PluginManifest,
+  body: unknown,
+  db: Database,
+  userId: string
+): Promise<IngestResult> {
+  if (!manifest.ingest) {
+    return { created: 0, skipped: 0, errors: ["Plugin has no ingest block"] };
+  }
+
+  const mapping = manifest.ingest.itemMapping;
+
+  // Determine items: body.items array, plain array, or single item
+  let items: unknown[];
+  if (typeof body !== "object" || body === null) {
+    return { created: 0, skipped: 0, errors: ["Invalid payload"] };
+  }
+
+  const bodyObj = body as Record<string, unknown>;
+  if (Array.isArray(bodyObj.items)) {
+    items = bodyObj.items;
+  } else if (Array.isArray(body)) {
+    items = body;
+  } else {
+    // Treat the body itself as a single item
+    items = [body];
+  }
+
+  let created = 0;
+  let skipped = 0;
+  const errors: string[] = [];
+
+  for (const item of items) {
+    try {
+      // Extract URL (required)
+      const url = resolveJsonPath(item, mapping.url);
+      if (typeof url !== "string" || url.length === 0) {
+        errors.push("Item missing required 'url' field");
+        continue;
+      }
+
+      // Extract optional fields
+      const title = mapping.title
+        ? (resolveJsonPath(item, mapping.title) as string | undefined)
+        : undefined;
+
+      const link = createLink(db, userId, {
+        url,
+        title: typeof title === "string" ? title : undefined,
+        source: `plugin:${manifest.id}`,
+        sourceFeed: mapping.sourceFeed
+          ? (resolveJsonPath(item, mapping.sourceFeed) as
+              | string
+              | undefined) ?? undefined
+          : undefined,
+      });
+
+      // Assign collection if specified
+      if (mapping.collection) {
+        const collectionName = resolveJsonPath(
+          item,
+          mapping.collection
+        ) as string | undefined;
+        if (typeof collectionName === "string" && collectionName.length > 0) {
+          const collection = getCollectionByName(
+            db,
+            userId,
+            collectionName
+          );
+          if (collection) {
+            updateLink(db, userId, link.id, {
+              collectionId: collection.id,
+            });
+          }
+        }
+      }
+
+      // Create and assign tags
+      if (mapping.tags) {
+        const rawTags = resolveJsonPath(item, mapping.tags);
+        let tagNames: string[] = [];
+        if (Array.isArray(rawTags)) {
+          tagNames = rawTags.filter(
+            (t): t is string => typeof t === "string"
+          );
+        } else if (typeof rawTags === "string" && rawTags.length > 0) {
+          tagNames = rawTags.split(",").map((t) => t.trim());
+        }
+        for (const tagName of tagNames) {
+          if (tagName.length > 0) {
+            const tag = getOrCreateTag(db, userId, tagName);
+            addTagToLink(db, link.id, tag.id);
+          }
+        }
+      }
+
+      // Fire async extraction
+      extractAndUpdate(db, link.id, url);
+
+      created++;
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.includes("UNIQUE constraint")
+      ) {
+        skipped++;
+      } else {
+        const message =
+          error instanceof Error ? error.message : "Unknown error";
+        errors.push(message);
+      }
+    }
+  }
+
+  return { created, skipped, errors };
+}

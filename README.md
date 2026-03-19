@@ -436,7 +436,9 @@ Trove includes a cross-platform browser extension (Chrome + Safari) for saving l
 
 ### Safari Installation
 
-Safari requires wrapping the extension in an Xcode project using `xcrun safari-web-extension-converter`. See Apple's documentation on [converting a web extension for Safari](https://developer.apple.com/documentation/safariservices/converting-a-web-extension-for-safari).
+Safari requires wrapping the extension in an Xcode project using `xcrun safari-web-extension-converter`. See [extension/safari/README.md](extension/safari/README.md) for full build instructions covering both macOS and iOS.
+
+For detailed setup guides covering all platforms, see the [extension documentation](extension/README.md).
 
 ## Bookmarklet
 

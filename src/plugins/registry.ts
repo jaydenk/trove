@@ -38,6 +38,7 @@ export function listPluginInfo(db: Database, userId: string): PluginInfo[] {
       configSchema: p.configSchema,
       hasExecute: !!p.execute,
       executeType: p.execute?.type ?? null,
+      actionLabel: p.execute?.actionLabel ?? null,
       hasIngest: !!p.ingest,
       isConfigured,
     };

@@ -116,7 +116,7 @@ function PluginActionButton({
       type="button"
       onClick={handleClick}
       disabled={status === "loading"}
-      title={plugin.name}
+      title={plugin.actionLabel ?? plugin.name}
       className="inline-flex items-center justify-center h-6 w-6 rounded text-xs opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity hover:bg-neutral-200 dark:hover:bg-neutral-700 disabled:opacity-50 shrink-0"
     >
       {status === "loading" ? (

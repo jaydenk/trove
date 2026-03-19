@@ -37,6 +37,7 @@ export interface TrovePlugin {
 
   execute?: {
     type: "api-call" | "url-redirect";
+    actionLabel: string;
     run(link: PluginLink, config: Record<string, string>): Promise<PluginResult>;
   };
 
@@ -60,6 +61,7 @@ export interface PluginInfo {
   configSchema: Record<string, PluginConfigField>;
   hasExecute: boolean;
   executeType: "api-call" | "url-redirect" | null;
+  actionLabel: string | null;
   hasIngest: boolean;
   isConfigured: boolean;
 }

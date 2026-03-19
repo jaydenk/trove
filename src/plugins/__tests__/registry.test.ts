@@ -23,6 +23,7 @@ function makeMockPlugin(overrides: Partial<TrovePlugin> = {}): TrovePlugin {
     },
     execute: {
       type: "api-call",
+      actionLabel: "Test Action",
       async run() {
         return { type: "success", message: "ok" };
       },

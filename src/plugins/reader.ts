@@ -16,6 +16,7 @@ export const readerPlugin: TrovePlugin = {
 
   execute: {
     type: "api-call",
+    actionLabel: "Send to Reader",
     async run(link, config) {
       const token = config.READWISE_TOKEN;
 

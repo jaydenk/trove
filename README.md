@@ -20,7 +20,7 @@ Trove is a self-hosted personal link library for saving, organising, and searchi
 - **Bulk actions** for archiving, deleting, and moving multiple links at once
 - **Keyboard shortcuts** for navigation (j/k), search (/), and selection (x)
 - **Bookmarklet** for saving links from any page in one click
-- **Dark mode toggle** with light, dark, and system options (persisted in localStorage)
+- **Theme toggle** with light, dark, and system options under Settings > Appearance (persisted in localStorage)
 - **Page snapshots** — view the original raw HTML of any saved link directly in the browser
 - **Admin user management** — create and delete users from the Settings UI (admin only)
 - **Responsive UI** built with React 19, Tailwind CSS 4, and Vite 6 with mobile-optimised layout

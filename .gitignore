@@ -6,6 +6,8 @@ data/*
 docker-compose.override.yml
 TODO.md
 .superpowers/
+docs/superpowers/
+stash-spec.md
 frontend/node_modules/
 frontend/dist/
 extension/safari/Save to Trove/

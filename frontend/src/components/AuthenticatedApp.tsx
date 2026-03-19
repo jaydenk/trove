@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useLinks } from "../hooks/useLinks";
 import { useCollections } from "../hooks/useCollections";
 import { usePlugins } from "../hooks/usePlugins";
-import { api } from "../api";
+import { api, connectSSE } from "../api";
 import CollectionSidebar from "./CollectionSidebar";
 import SettingsView from "./SettingsView";
 import LinkCard from "./LinkCard";
@@ -160,6 +160,28 @@ export default function AuthenticatedApp({
     isLoading: linksLoading,
     refetch: refetchLinks,
   } = useLinks(linkFilters);
+
+  // -----------------------------------------------------------------------
+  // SSE auto-refresh — connect on mount, debounce rapid events
+  // -----------------------------------------------------------------------
+
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+
+    const disconnect = connectSSE(() => {
+      // Debounce: wait 300ms after last event before refetching
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        refetchLinks();
+        refetchCollections();
+      }, 300);
+    });
+
+    return () => {
+      disconnect();
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [refetchLinks, refetchCollections]);
 
   // -----------------------------------------------------------------------
   // Bulk action handlers (Task 5)

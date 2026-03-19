@@ -93,6 +93,9 @@ export interface PaginatedResponse<T> {
 export interface CreateLinkInput {
   url: string;
   title?: string;
+  description?: string;
+  content?: string;
+  rawHtml?: string;
   collectionId?: string;
   tags?: string[];
   source?: string;
@@ -437,4 +440,45 @@ export async function downloadExport(
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+// ---------------------------------------------------------------------------
+// SSE connection for real-time updates
+// ---------------------------------------------------------------------------
+
+export function connectSSE(
+  onEvent: (event: { type: string; linkId: string; timestamp: string }) => void,
+): () => void {
+  const token = getToken();
+  if (!token) return () => {};
+
+  const es = new EventSource(
+    `/api/events?token=${encodeURIComponent(token)}`,
+  );
+
+  const eventTypes = [
+    "link:created",
+    "link:updated",
+    "link:deleted",
+    "link:archived",
+  ];
+
+  for (const type of eventTypes) {
+    es.addEventListener(type, (e: MessageEvent) => {
+      try {
+        const data = JSON.parse(e.data);
+        onEvent({ type, ...data });
+      } catch {
+        // Ignore malformed events
+      }
+    });
+  }
+
+  es.onerror = () => {
+    // EventSource automatically reconnects — no manual handling needed
+  };
+
+  return () => {
+    es.close();
+  };
 }

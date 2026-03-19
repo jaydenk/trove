@@ -1,5 +1,4 @@
-// Browser namespace polyfill
-const browser = globalThis.browser || globalThis.chrome;
+// browser polyfill is loaded from ../lib/api.js
 
 const mainDiv = document.getElementById('main');
 const notConfiguredDiv = document.getElementById('notConfigured');
@@ -123,8 +122,7 @@ async function init() {
 
   // Fetch collections
   try {
-    const result = await troveApi('/collections');
-    const collections = result?.data || [];
+    const collections = await troveApi('/collections') || [];
     for (const col of collections) {
       const option = document.createElement('option');
       option.value = col.id;

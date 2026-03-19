@@ -1,5 +1,4 @@
-// Browser namespace polyfill
-const browser = globalThis.browser || globalThis.chrome;
+// browser polyfill is loaded from ../lib/api.js
 
 const serverUrlInput = document.getElementById('serverUrl');
 const apiTokenInput = document.getElementById('apiToken');
@@ -74,7 +73,7 @@ testBtn.addEventListener('click', async () => {
     }
 
     const result = await troveApi('/me');
-    const name = result?.data?.name || result?.data?.role || 'Unknown user';
+    const name = result?.name || result?.email || 'Unknown user';
     showStatus(`Connected successfully as ${name}.`, 'success');
   } catch (err) {
     showStatus(`Connection failed: ${err.message}`, 'error');

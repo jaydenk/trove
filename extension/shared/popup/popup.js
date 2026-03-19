@@ -135,10 +135,40 @@ async function init() {
   }
 }
 
+async function extractPageContent(tabId) {
+  try {
+    const [{ result }] = await browser.scripting.executeScript({
+      target: { tabId },
+      func: () => ({
+        title: document.title,
+        description:
+          document.querySelector('meta[name="description"]')?.content ||
+          document.querySelector('meta[property="og:description"]')?.content ||
+          '',
+        content: (document.body.innerText || '').substring(0, 50000),
+        rawHtml: document.documentElement.outerHTML,
+        domain: window.location.hostname,
+      }),
+    });
+    return result;
+  } catch (err) {
+    // Extraction may fail on restricted pages (chrome://, about:, etc.)
+    // Fall back to no pre-extracted content — server will extract instead
+    console.warn('Content extraction failed:', err.message);
+    return null;
+  }
+}
+
 saveBtn.addEventListener('click', async () => {
   if (!currentUrl) return;
 
   saveBtn.disabled = true;
+  showStatus('Extracting content\u2026', 'loading');
+
+  // Extract content from the active tab
+  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+  const extracted = tab ? await extractPageContent(tab.id) : null;
+
   showStatus('Saving\u2026', 'loading');
 
   try {
@@ -147,6 +177,13 @@ saveBtn.addEventListener('click', async () => {
       title: titleInput.value.trim() || undefined,
       source: 'extension',
     };
+
+    // Add pre-extracted content if available
+    if (extracted) {
+      body.description = extracted.description || undefined;
+      body.content = extracted.content || undefined;
+      body.rawHtml = extracted.rawHtml || undefined;
+    }
 
     const collectionId = collectionSelect.value;
     if (collectionId) {

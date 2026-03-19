@@ -56,15 +56,37 @@ browser.contextMenus.onClicked.addListener(async (info, tab) => {
 
   let url;
   let title;
+  let extracted = null;
 
   if (info.linkUrl) {
-    // Right-clicked on a link
+    // Right-clicked on a link — cannot extract the linked page
     url = info.linkUrl;
     title = info.selectionText || undefined;
   } else {
-    // Right-clicked on the page
+    // Right-clicked on the page — extract content from current tab
     url = info.pageUrl || (tab && tab.url) || '';
     title = (tab && tab.title) || undefined;
+
+    if (tab && tab.id) {
+      try {
+        const [{ result }] = await browser.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => ({
+            title: document.title,
+            description:
+              document.querySelector('meta[name="description"]')?.content ||
+              document.querySelector('meta[property="og:description"]')?.content ||
+              '',
+            content: (document.body.innerText || '').substring(0, 50000),
+            rawHtml: document.documentElement.outerHTML,
+            domain: window.location.hostname,
+          }),
+        });
+        extracted = result;
+      } catch (err) {
+        console.warn('Content extraction failed:', err.message);
+      }
+    }
   }
 
   if (!url) {
@@ -73,13 +95,21 @@ browser.contextMenus.onClicked.addListener(async (info, tab) => {
   }
 
   try {
+    const body = {
+      url,
+      title,
+      source: 'extension',
+    };
+
+    if (extracted) {
+      body.description = extracted.description || undefined;
+      body.content = extracted.content || undefined;
+      body.rawHtml = extracted.rawHtml || undefined;
+    }
+
     await troveApi('/links', {
       method: 'POST',
-      body: JSON.stringify({
-        url,
-        title,
-        source: 'extension',
-      }),
+      body: JSON.stringify(body),
     });
     showBadge('OK', '#22c55e');
   } catch (err) {

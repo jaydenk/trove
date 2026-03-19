@@ -3,7 +3,7 @@
   "name": "Save to Trove",
   "version": "1.0.0",
   "description": "Save links to your Trove library",
-  "permissions": ["activeTab", "contextMenus", "storage"],
+  "permissions": ["activeTab", "contextMenus", "storage", "scripting"],
   "host_permissions": ["<all_urls>"],
   "action": {
     "default_popup": "popup/popup.html",

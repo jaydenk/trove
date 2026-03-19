@@ -8,6 +8,7 @@ import { extractAndUpdate } from "../services/extractor";
 import { parseHtmlBookmarks, parseCsv, parseJson } from "../services/importer";
 import { exportJson, exportCsv, exportHtml } from "../services/exporter";
 import { ValidationError } from "../lib/errors";
+import { emitLinkEvent } from "../lib/events";
 import type { ImportItem } from "../services/importer";
 
 const importExport = new Hono<{ Variables: AppVariables }>();
@@ -131,6 +132,10 @@ importExport.post("/api/import", async (c) => {
     extractAndUpdate(db, link.id, item.url);
 
     imported++;
+  }
+
+  if (imported > 0) {
+    emitLinkEvent({ type: "link:created", linkId: "bulk", userId: user.id });
   }
 
   return c.json({ imported, skipped, errors });

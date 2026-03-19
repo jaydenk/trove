@@ -23,6 +23,7 @@ import {
   ValidationError,
   ForbiddenError,
 } from "../lib/errors";
+import { emitLinkEvent } from "../lib/events";
 
 const plugins = new Hono<{ Variables: AppVariables }>();
 
@@ -358,6 +359,10 @@ plugins.post("/api/plugins/:id/webhook", async (c) => {
   // 3. Handle ingest
   const body = await c.req.json();
   const result = await handleIngest(plugin.manifest, body, db, user.id);
+
+  if (result.created > 0) {
+    emitLinkEvent({ type: "link:created", linkId: "ingest", userId: user.id });
+  }
 
   return c.json(result);
 });

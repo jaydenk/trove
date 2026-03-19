@@ -18,6 +18,7 @@ import admin from "./routes/admin";
 import user from "./routes/user";
 import plugins from "./routes/plugins";
 import importExport from "./routes/importExport";
+import sse from "./routes/sse";
 
 const app = new Hono<{ Variables: AppVariables }>();
 
@@ -40,9 +41,10 @@ app.onError((err, c) => {
   );
 });
 
-// Public routes (no auth)
+// Public routes (no auth — SSE handles auth via query param internally)
 app.route("/", health);
 app.route("/", auth);
+app.route("/", sse);
 
 // Protected routes under /api/*: rate limit + auth
 const db = getDb();

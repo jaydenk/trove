@@ -10,6 +10,7 @@ import { getDb } from "./db/connection";
 
 import { registerAllPlugins } from "./plugins/index";
 import health from "./routes/health";
+import auth from "./routes/auth";
 import links from "./routes/links";
 import collections from "./routes/collections";
 import tags from "./routes/tags";
@@ -41,6 +42,7 @@ app.onError((err, c) => {
 
 // Public routes (no auth)
 app.route("/", health);
+app.route("/", auth);
 
 // Protected routes under /api/*: rate limit + auth
 const db = getDb();

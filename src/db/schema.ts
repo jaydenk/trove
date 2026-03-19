@@ -94,6 +94,20 @@ export function runMigrations(db: Database): void {
     );
   `);
 
+  // Migration: add username + password_hash columns to users table
+  const userColumns = db
+    .query<{ name: string }, []>("PRAGMA table_info(users)")
+    .all()
+    .map((col) => col.name);
+
+  if (!userColumns.includes("username")) {
+    db.exec("ALTER TABLE users ADD COLUMN username TEXT");
+    db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username)");
+  }
+  if (!userColumns.includes("password_hash")) {
+    db.exec("ALTER TABLE users ADD COLUMN password_hash TEXT");
+  }
+
   // Trigger: auto-update updated_at on links
   db.exec(`
     CREATE TRIGGER IF NOT EXISTS links_updated_at AFTER UPDATE ON links

@@ -13,7 +13,8 @@ Trove is a self-hosted personal link library for saving, organising, and searchi
 - **Import/export** bookmarks in HTML (Netscape), CSV, and JSON formats with round-trip support
 - **Plugin system** for extending Trove with external services (Readwise Reader, Things, n8n)
 - **MCP server** for AI assistant integration (search, browse, save links via Claude, etc.)
-- **Multi-user** with token-based authentication and admin management
+- **Username/password authentication** for the web UI with argon2id password hashing (API token auth preserved for extensions and automation)
+- **Multi-user** with admin management
 - **Rate limiting** on write operations (60 requests/minute per token)
 - **Structured logging** via Pino with pretty-printing in development
 - **Single-container deployment** with Docker and healthcheck support
@@ -42,10 +43,10 @@ Trove is a self-hosted personal link library for saving, organising, and searchi
    cp env.example .env
    ```
 
-2. Edit `.env` and set a secure admin token:
+2. Edit `.env` and set a secure admin password:
 
    ```
-   TROVE_ADMIN_TOKEN=your-secure-token-here
+   TROVE_ADMIN_PASSWORD=your-secure-password-here
    ```
 
 3. Start the container:
@@ -60,7 +61,9 @@ Trove is a self-hosted personal link library for saving, organising, and searchi
    docker compose exec trove bun run seed
    ```
 
-5. Open your browser at [http://localhost:3737](http://localhost:3737) and log in with the token you set in `.env`.
+   The seed command will print the admin's auto-generated API token. The admin username is `admin`.
+
+5. Open your browser at [http://localhost:3737](http://localhost:3737) and sign in with username `admin` and the password you set in `.env`.
 
 ## Development Setup
 
@@ -93,7 +96,7 @@ Trove is a self-hosted personal link library for saving, organising, and searchi
 4. Seed the admin user:
 
    ```bash
-   TROVE_ADMIN_TOKEN=your-secure-token bun run seed
+   TROVE_ADMIN_PASSWORD=your-secure-password bun run seed
    ```
 
 5. Start the backend (with hot reload):
@@ -127,14 +130,23 @@ Trove is a self-hosted personal link library for saving, organising, and searchi
 | -------------------------------- | -------- | ---------------- | ------------------------------------------------- |
 | `TROVE_DB_PATH`                  | Yes      | `./data/trove.db`| Path to the SQLite database file                  |
 | `PORT`                           | No       | `3737`           | Server listening port                             |
-| `TROVE_ADMIN_TOKEN`              | Seed     | —                | Token for the admin user (used by `bun run seed`) |
+| `TROVE_ADMIN_PASSWORD`           | Seed     | —                | Password for the admin user (used by `bun run seed`, username is `admin`) |
+| `TROVE_ADMIN_TOKEN`              | Seed     | —                | **Deprecated.** Legacy raw token for the admin user (use `TROVE_ADMIN_PASSWORD` instead) |
 | `TROVE_API_TOKEN`                | MCP      | —                | User API token for the MCP server process         |
 | `TROVE_EXTRACTION_TIMEOUT_MS`    | No       | `10000`          | Content extraction fetch timeout in milliseconds  |
 | `TROVE_MAX_CONTENT_LENGTH_CHARS` | No       | `50000`          | Maximum character length for stored page content  |
 
 ## API Endpoints
 
-All API routes (under `/api/*`) require a `Authorization: Bearer <token>` header. The health endpoint is public.
+All API routes (under `/api/*`) require an `Authorization: Bearer <token>` header, except the login endpoint which is public. The health endpoint is also public.
+
+### Authentication
+
+| Method | Path              | Auth | Description                                          |
+| ------ | ----------------- | ---- | ---------------------------------------------------- |
+| POST   | `/api/auth/login` | No   | Authenticate with username + password, returns token |
+
+**POST /api/auth/login** accepts `{ username: string, password: string }` and returns `{ token: string, user: { id, name, username, email, isAdmin } }`. Rate limited to 10 attempts per minute per IP.
 
 ### Health
 
@@ -144,10 +156,11 @@ All API routes (under `/api/*`) require a `Authorization: Bearer <token>` header
 
 ### User Profile
 
-| Method | Path      | Auth | Description              |
-| ------ | --------- | ---- | ------------------------ |
-| GET    | `/api/me` | Yes  | Get current user         |
-| PATCH  | `/api/me` | Yes  | Update name and/or email |
+| Method | Path                        | Auth | Description                              |
+| ------ | --------------------------- | ---- | ---------------------------------------- |
+| GET    | `/api/me`                   | Yes  | Get current user (includes username)     |
+| PATCH  | `/api/me`                   | Yes  | Update name, email, username, or password|
+| POST   | `/api/me/regenerate-token`  | Yes  | Generate a new API token                 |
 
 ### Admin (requires admin role)
 
@@ -500,7 +513,8 @@ TroveLinkManager/
 │   │   └── rateLimit.ts      # In-memory sliding-window rate limiter
 │   ├── routes/
 │   │   ├── health.ts         # GET /health — status and link count
-│   │   ├── user.ts           # GET/PATCH /api/me — user profile
+│   │   ├── auth.ts           # POST /api/auth/login — public login endpoint
+│   │   ├── user.ts           # GET/PATCH /api/me, POST /api/me/regenerate-token
 │   │   ├── admin.ts          # Admin-only user management routes
 │   │   ├── collections.ts    # Collection CRUD routes
 │   │   ├── tags.ts           # Tag CRUD routes
@@ -585,7 +599,7 @@ TroveLinkManager/
 
 Trove uses SQLite via Bun's built-in `bun:sqlite` driver with WAL mode and foreign keys enabled. The schema includes:
 
-- **users** — API token-based authentication
+- **users** — Username/password + API token authentication (argon2id hashing)
 - **links** — Saved URLs with metadata, FTS5 full-text search
 - **collections** — User-defined groupings (5 defaults seeded per user)
 - **tags** / **link_tags** — Many-to-many tagging

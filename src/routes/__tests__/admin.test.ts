@@ -85,7 +85,7 @@ describe("admin routes", () => {
   });
 
   describe("POST /api/admin/users", () => {
-    test("creates user, returns token, seeds collections", async () => {
+    test("creates user with username+password, returns token, seeds collections", async () => {
       const app = createApp();
 
       const res = await app.request("/api/admin/users", {
@@ -94,12 +94,18 @@ describe("admin routes", () => {
           Authorization: `Bearer ${adminToken}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ name: "Charlie", email: "charlie@test.com" }),
+        body: JSON.stringify({
+          name: "Charlie",
+          username: "charlie",
+          password: "secure-password-123",
+          email: "charlie@test.com",
+        }),
       });
 
       expect(res.status).toBe(201);
       const body = await res.json();
       expect(body.name).toBe("Charlie");
+      expect(body.username).toBe("charlie");
       expect(body.email).toBe("charlie@test.com");
       expect(body.apiToken).toBeDefined();
       expect(body.apiToken.length).toBe(32);
@@ -123,7 +129,45 @@ describe("admin routes", () => {
           Authorization: `Bearer ${adminToken}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email: "nobody@test.com" }),
+        body: JSON.stringify({
+          username: "noname",
+          password: "password123",
+          email: "nobody@test.com",
+        }),
+      });
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error.code).toBe("VALIDATION_ERROR");
+    });
+
+    test("returns 400 when username is missing", async () => {
+      const app = createApp();
+
+      const res = await app.request("/api/admin/users", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${adminToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: "NoUsername", password: "password123" }),
+      });
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error.code).toBe("VALIDATION_ERROR");
+    });
+
+    test("returns 400 when password is missing", async () => {
+      const app = createApp();
+
+      const res = await app.request("/api/admin/users", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${adminToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: "NoPassword", username: "nopassword" }),
       });
 
       expect(res.status).toBe(400);

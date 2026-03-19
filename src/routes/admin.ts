@@ -1,8 +1,7 @@
 import { Hono } from "hono";
-import { nanoid } from "nanoid";
 import type { AppVariables } from "../middleware/auth";
 import { getDb } from "../db/connection";
-import { createUser, listUsers, deleteUser } from "../db/queries/users";
+import { createUserWithPassword, listUsers, deleteUser } from "../db/queries/users";
 import { seedDefaultCollections } from "../db/queries/collections";
 import { ForbiddenError, ValidationError } from "../lib/errors";
 
@@ -25,6 +24,7 @@ admin.get("/api/admin/users", (c) => {
     users.map((u) => ({
       id: u.id,
       name: u.name,
+      username: u.username,
       email: u.email,
       isAdmin: u.is_admin === 1,
       createdAt: u.created_at,
@@ -33,19 +33,32 @@ admin.get("/api/admin/users", (c) => {
 });
 
 admin.post("/api/admin/users", async (c) => {
-  const body = await c.req.json<{ name?: string; email?: string }>();
+  const body = await c.req.json<{
+    name?: string;
+    username?: string;
+    password?: string;
+    email?: string;
+  }>();
 
   if (!body.name) {
     throw new ValidationError("Name is required");
   }
 
-  const db = getDb();
-  const apiToken = nanoid(32);
+  if (!body.username || typeof body.username !== "string") {
+    throw new ValidationError("Username is required");
+  }
 
-  const user = createUser(db, {
+  if (!body.password || typeof body.password !== "string") {
+    throw new ValidationError("Password is required");
+  }
+
+  const db = getDb();
+
+  const user = await createUserWithPassword(db, {
     name: body.name,
+    username: body.username,
+    password: body.password,
     email: body.email,
-    apiToken,
   });
 
   seedDefaultCollections(db, user.id);
@@ -54,10 +67,11 @@ admin.post("/api/admin/users", async (c) => {
     {
       id: user.id,
       name: user.name,
+      username: user.username,
       email: user.email,
       isAdmin: user.is_admin === 1,
       createdAt: user.created_at,
-      apiToken,
+      apiToken: user.api_token,
     },
     201
   );

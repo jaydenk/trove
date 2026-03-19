@@ -107,7 +107,10 @@ export async function seedAdminWithPassword(
   const existing = findByUsername(db, "admin");
 
   if (existing) {
-    return { created: false, userId: existing.id };
+    // Update password if re-seeding with a new password
+    const { updatePassword } = await import("./db/queries/users");
+    await updatePassword(db, existing.id, password);
+    return { created: false, userId: existing.id, apiToken: existing.api_token };
   }
 
   const user = await createUserWithPassword(db, {
@@ -150,7 +153,7 @@ if (import.meta.main) {
           `Admin created. Username: admin, API Token: ${result.apiToken}`
         );
       } else {
-        console.log("Admin user already exists");
+        console.log(`Admin password updated. API Token: ${result.apiToken}`);
       }
     } else {
       // Legacy token-based flow

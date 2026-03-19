@@ -414,7 +414,29 @@ Trove supports several ways to save links:
 - **API** — `POST /api/links` with `{ "url": "..." }` from any HTTP client, script, or automation tool.
 - **n8n Webhook** — pipe links from n8n workflows via `POST /api/plugins/n8n/webhook` (see [n8n Webhook plugin](#n8n-webhook) above).
 - **iOS Shortcut** — save links directly from the iOS Share Sheet. See the [iOS Shortcut setup guide](docs/ios-shortcut.md) for step-by-step instructions.
+- **Browser Extension** — Chrome and Safari extension with popup, context menu, and keyboard shortcut (see [Browser Extension](#browser-extension) below).
 - **MCP** — AI assistants can search, browse, and save links via the MCP server (see [MCP Server](#mcp-server) above).
+
+## Browser Extension
+
+Trove includes a cross-platform browser extension (Chrome + Safari) for saving links directly from any page. The extension lives in `extension/shared/` and uses Manifest V3 with vanilla HTML/CSS/JS — no build step required.
+
+### Features
+
+- **Popup** — click the toolbar icon (or press `Cmd+Shift+L` / `Ctrl+Shift+L`) to save the current page with a title, collection, and tags.
+- **Context menu** — right-click any page or link and select "Save to Trove".
+- **Badge feedback** — green "OK" badge on success, red "!" on error.
+- **Options page** — configure your Trove server URL and API token with a connection test.
+
+### Chrome Installation
+
+1. Open `chrome://extensions/` and enable Developer mode.
+2. Click "Load unpacked" and select the `extension/shared/` directory.
+3. Click the extension icon, then open Settings to enter your server URL and API token.
+
+### Safari Installation
+
+Safari requires wrapping the extension in an Xcode project using `xcrun safari-web-extension-converter`. See Apple's documentation on [converting a web extension for Safari](https://developer.apple.com/documentation/safariservices/converting-a-web-extension-for-safari).
 
 ## Bookmarklet
 
@@ -535,6 +557,15 @@ TroveLinkManager/
 │   │   └── index.css
 │   ├── index.html
 │   └── vite.config.ts
+├── extension/                # Browser extension (Chrome + Safari)
+│   └── shared/
+│       ├── manifest.json     # Manifest V3 extension config
+│       ├── background.js     # Service worker (context menu + badge)
+│       ├── lib/
+│       │   └── api.js        # Trove API client with storage-based config
+│       ├── popup/            # Toolbar popup (save link with collection + tags)
+│       ├── options/          # Settings page (server URL + API token)
+│       └── icons/            # Extension icons (16, 48, 128px)
 ├── Dockerfile                # Single-stage Bun-based container build
 ├── docker-compose.yml        # Portable compose file (no Traefik)
 ├── docker-compose.override.example.yml  # Traefik deployment template

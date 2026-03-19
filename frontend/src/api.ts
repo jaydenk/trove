@@ -261,6 +261,12 @@ export const api = {
 
   me: () => request<User>("/me"),
 
+  updateMe: (data: { name?: string; email?: string; password?: string; username?: string }) =>
+    request<User>("/me", { method: "PATCH", body: JSON.stringify(data) }),
+
+  regenerateToken: () =>
+    request<{ token: string }>("/me/regenerate-token", { method: "POST" }),
+
   links: {
     list: (params?: ListLinksParams) =>
       request<PaginatedResponse<Link>>(

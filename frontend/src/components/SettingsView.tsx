@@ -1,4 +1,5 @@
 import { useState } from "react";
+import AccountSettings from "./AccountSettings";
 import CollectionManager from "./CollectionManager";
 import PluginSettings from "./PluginSettings";
 import ImportExportSettings from "./ImportExportSettings";
@@ -17,7 +18,7 @@ interface SettingsViewProps {
   user: User;
 }
 
-type SettingsTab = "appearance" | "collections" | "plugins" | "import-export" | "users";
+type SettingsTab = "account" | "appearance" | "collections" | "plugins" | "import-export" | "users";
 
 export default function SettingsView({
   collections,
@@ -69,6 +70,13 @@ export default function SettingsView({
         <div className="flex gap-0 px-6 mt-3">
           <button
             type="button"
+            onClick={() => setActiveTab("account")}
+            className={`${tabBase} ${activeTab === "account" ? tabActive : tabIdle}`}
+          >
+            Account
+          </button>
+          <button
+            type="button"
             onClick={() => setActiveTab("appearance")}
             className={`${tabBase} ${activeTab === "appearance" ? tabActive : tabIdle}`}
           >
@@ -108,7 +116,9 @@ export default function SettingsView({
       </div>
 
       {/* Tab content */}
-      {activeTab === "appearance" ? (
+      {activeTab === "account" ? (
+        <AccountSettings user={user} />
+      ) : activeTab === "appearance" ? (
         <div className="flex-1 overflow-y-auto p-6">
           <h3 className="text-sm font-medium text-neutral-900 dark:text-neutral-100 mb-3">
             Theme

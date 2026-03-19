@@ -2,22 +2,31 @@ import { useState } from "react";
 import CollectionManager from "./CollectionManager";
 import PluginSettings from "./PluginSettings";
 import ImportExportSettings from "./ImportExportSettings";
-import type { Collection } from "../api";
+import UserManagement from "./UserManagement";
+import type { Collection, User } from "../api";
+
+type ThemePreference = "light" | "dark" | "system";
 
 interface SettingsViewProps {
   collections: Collection[];
   onRefreshCollections: () => void;
   onRefreshPlugins: () => void;
   onClose: () => void;
+  theme: ThemePreference;
+  onThemeChange: (theme: ThemePreference) => void;
+  user: User;
 }
 
-type SettingsTab = "collections" | "plugins" | "import-export";
+type SettingsTab = "collections" | "plugins" | "import-export" | "users";
 
 export default function SettingsView({
   collections,
   onRefreshCollections,
   onRefreshPlugins,
   onClose,
+  theme,
+  onThemeChange,
+  user,
 }: SettingsViewProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>("collections");
 
@@ -56,6 +65,29 @@ export default function SettingsView({
           </h2>
         </div>
 
+        {/* Theme toggle */}
+        <div className="px-6 mt-3 flex items-center gap-3">
+          <span className="text-xs font-medium text-muted dark:text-dark-muted">
+            Theme
+          </span>
+          <div className="inline-flex rounded-md border border-border dark:border-dark-border overflow-hidden">
+            {(["light", "dark", "system"] as const).map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => onThemeChange(opt)}
+                className={`px-3 py-1 text-xs font-medium transition-colors capitalize ${
+                  theme === opt
+                    ? "bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900"
+                    : "text-neutral-600 dark:text-neutral-400 hover:bg-hover dark:hover:bg-dark-hover"
+                }`}
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Tabs */}
         <div className="flex gap-0 px-6 mt-3">
           <button
@@ -79,6 +111,15 @@ export default function SettingsView({
           >
             Import / Export
           </button>
+          {user.isAdmin && (
+            <button
+              type="button"
+              onClick={() => setActiveTab("users")}
+              className={`${tabBase} ${activeTab === "users" ? tabActive : tabIdle}`}
+            >
+              Users
+            </button>
+          )}
         </div>
       </div>
 
@@ -95,6 +136,8 @@ export default function SettingsView({
           onClose={onClose}
           hideHeader
         />
+      ) : activeTab === "users" ? (
+        <UserManagement currentUser={user} />
       ) : (
         <ImportExportSettings
           onImportComplete={onRefreshCollections}

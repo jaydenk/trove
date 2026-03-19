@@ -20,6 +20,9 @@ Trove is a self-hosted personal link library for saving, organising, and searchi
 - **Bulk actions** for archiving, deleting, and moving multiple links at once
 - **Keyboard shortcuts** for navigation (j/k), search (/), and selection (x)
 - **Bookmarklet** for saving links from any page in one click
+- **Dark mode toggle** with light, dark, and system options (persisted in localStorage)
+- **Page snapshots** — view the original raw HTML of any saved link directly in the browser
+- **Admin user management** — create and delete users from the Settings UI (admin only)
 - **Responsive UI** built with React 19, Tailwind CSS 4, and Vite 6 with mobile-optimised layout
 
 ## Tech Stack
@@ -550,6 +553,7 @@ TroveLinkManager/
 │   │   │   ├── LinkCard.tsx            # Link list item with favicon, title, domain, tags, plugin actions
 │   │   │   ├── LinkDetail.tsx          # Right-side detail panel with editing, plugin actions, and history
 │   │   │   ├── PluginSettings.tsx      # Plugin configuration screen with per-user settings
+│   │   │   ├── UserManagement.tsx     # Admin user management (create, delete users)
 │   │   │   ├── ImportExportSettings.tsx # Import/export UI with file upload and download
 │   │   │   ├── AddLinkModal.tsx        # Modal for adding links with extraction preview and bookmarklet support
 │   │   │   ├── BulkActionBar.tsx      # Floating bar for bulk archive, delete, and move actions

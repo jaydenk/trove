@@ -678,4 +678,101 @@ describe("links routes", () => {
       expect(body.data[0].url).toBe("https://mine.com");
     });
   });
+
+  describe("POST /api/links with pre-extracted content", () => {
+    test("sets extraction_status to completed when content is provided", async () => {
+      const app = createApp();
+
+      const res = await app.request("/api/links", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${userToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          url: "https://example.com/extracted",
+          title: "Extracted Page",
+          content: "This is the pre-extracted page content",
+          description: "A test description",
+          rawHtml: "<html><body>Test</body></html>",
+        }),
+      });
+
+      expect(res.status).toBe(201);
+      const body = await res.json();
+      expect(body.url).toBe("https://example.com/extracted");
+      expect(body.extraction_status).toBe("completed");
+
+      // Verify in DB
+      const link = db
+        .query<
+          {
+            extraction_status: string;
+            content: string;
+            description: string;
+            raw_html: string;
+          },
+          [string]
+        >("SELECT extraction_status, content, description, raw_html FROM links WHERE id = ?")
+        .get(body.id);
+
+      expect(link!.extraction_status).toBe("completed");
+      expect(link!.content).toBe("This is the pre-extracted page content");
+      expect(link!.description).toBe("A test description");
+      expect(link!.raw_html).toBe("<html><body>Test</body></html>");
+    });
+
+    test("stores description and rawHtml correctly", async () => {
+      const app = createApp();
+
+      const res = await app.request("/api/links", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${userToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          url: "https://example.com/full-extraction",
+          content: "Full page content here",
+          description: "Meta description from OG tags",
+          rawHtml: "<!DOCTYPE html><html><head></head><body>Full page</body></html>",
+        }),
+      });
+
+      expect(res.status).toBe(201);
+      const body = await res.json();
+
+      const link = db
+        .query<
+          { description: string; raw_html: string; favicon_url: string },
+          [string]
+        >("SELECT description, raw_html, favicon_url FROM links WHERE id = ?")
+        .get(body.id);
+
+      expect(link!.description).toBe("Meta description from OG tags");
+      expect(link!.raw_html).toBe(
+        "<!DOCTYPE html><html><head></head><body>Full page</body></html>"
+      );
+      expect(link!.favicon_url).toContain("example.com");
+    });
+
+    test("without content field triggers server-side extraction (pending status)", async () => {
+      const app = createApp();
+
+      const res = await app.request("/api/links", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${userToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          url: "https://example.com/no-content",
+        }),
+      });
+
+      expect(res.status).toBe(201);
+      const body = await res.json();
+      expect(body.extraction_status).toBe("pending");
+    });
+  });
 });

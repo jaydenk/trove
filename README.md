@@ -24,6 +24,8 @@ Trove is a self-hosted personal link library for saving, organising, and searchi
 - **Theme toggle** with light, dark, and system options under Settings > Appearance (persisted in localStorage)
 - **Page snapshots** — view the original raw HTML of any saved link directly in the browser
 - **Admin user management** — create and delete users from the Settings UI (admin only)
+- **Extension content extraction** — the browser extension captures rendered DOM content (including JS-rendered and paywalled pages) for higher quality extraction
+- **Real-time auto-refresh** via Server-Sent Events (SSE) — link changes from the extension, API, or plugins appear instantly in the web UI
 - **Responsive UI** built with React 19, Tailwind CSS 4, and Vite 6 with mobile-optimised layout
 
 ## Tech Stack
@@ -154,6 +156,21 @@ All API routes (under `/api/*`) require an `Authorization: Bearer <token>` heade
 | ------ | --------- | ---- | ----------------------------- |
 | GET    | `/health` | No   | Returns status and link count |
 
+### Real-Time Events (SSE)
+
+| Method | Path          | Auth        | Description                                            |
+| ------ | ------------- | ----------- | ------------------------------------------------------ |
+| GET    | `/api/events` | Query param | Server-Sent Events stream for real-time link changes   |
+
+**GET /api/events?token=\<apiToken\>** opens an SSE connection authenticated via query parameter (EventSource does not support custom headers). The stream emits events filtered to the authenticated user:
+
+- `link:created` — a new link was saved
+- `link:updated` — a link was modified
+- `link:deleted` — a link was removed
+- `link:archived` — a link was archived
+
+Each event includes `{ linkId, timestamp }` as JSON data. A heartbeat event is sent every 30 seconds to keep the connection alive. The frontend uses this to auto-refresh the link list and collection counts without polling.
+
 ### User Profile
 
 | Method | Path                        | Auth | Description                              |
@@ -214,7 +231,7 @@ All API routes (under `/api/*`) require an `Authorization: Bearer <token>` heade
 | `page`          | 1       | Page number                                     |
 | `limit`         | 50      | Results per page (max 200)                      |
 
-**POST /api/links** accepts `{ url, title?, collectionId?, tags?: string[], source?, sourceFeed? }`. Returns `409` with `DUPLICATE_URL` if the URL already exists for the user.
+**POST /api/links** accepts `{ url, title?, description?, content?, rawHtml?, collectionId?, tags?: string[], source?, sourceFeed? }`. Returns `409` with `DUPLICATE_URL` if the URL already exists for the user. When `content` is provided, server-side extraction is skipped and the link is marked as extracted immediately — this is used by the browser extension to send pre-extracted DOM content.
 
 ### Plugins
 
@@ -296,7 +313,9 @@ The override file adds Traefik labels and connects the container to the external
 
 ## Content Extraction
 
-When a link is created, Trove asynchronously fetches the page and extracts readable content using [Mozilla Readability](https://github.com/mozilla/readability). If Readability cannot parse the page (e.g. minimal HTML without article structure), it falls back to OpenGraph meta tags (`og:title`, `og:description`, `og:image`).
+When a link is created via the API or MCP, Trove asynchronously fetches the page and extracts readable content using [Mozilla Readability](https://github.com/mozilla/readability). If Readability cannot parse the page (e.g. minimal HTML without article structure), it falls back to OpenGraph meta tags (`og:title`, `og:description`, `og:image`).
+
+When a link is saved from the **browser extension**, content is extracted directly from the rendered DOM using `browser.scripting.executeScript`. This captures the fully rendered page — including JavaScript-rendered content and pages behind authentication — providing significantly better extraction quality than server-side fetching. The pre-extracted content (visible text, meta description, and raw HTML) is sent with the save request, and the server skips its own extraction.
 
 Favicons are resolved via Google's favicon service. Extracted content is truncated to a configurable maximum length (see environment variables above).
 
@@ -495,6 +514,7 @@ Trove includes a cross-platform browser extension (Chrome + Safari) for saving l
 
 - **Popup** — click the toolbar icon (or press `Cmd+Shift+L` / `Ctrl+Shift+L`) to save the current page with a title, collection, and tags.
 - **Context menu** — right-click any page or link and select "Save to Trove".
+- **Content extraction** — captures rendered DOM content (title, description, visible text, raw HTML) from the active tab using the `scripting` permission, providing better extraction quality than server-side fetching.
 - **Badge feedback** — green "OK" badge on success, red "!" on error.
 - **Options page** — configure your Trove server URL and API token with a connection test.
 
@@ -560,7 +580,8 @@ TroveLinkManager/
 ├── src/
 │   ├── lib/
 │   │   ├── id.ts             # nanoid wrapper for ID generation
-│   │   └── errors.ts         # Error classes (TroveError, NotFoundError, etc.)
+│   │   ├── errors.ts         # Error classes (TroveError, NotFoundError, etc.)
+│   │   └── events.ts         # In-memory event emitter for SSE link change events
 │   ├── middleware/
 │   │   ├── auth.ts           # Bearer token authentication middleware
 │   │   ├── logger.ts         # Pino-based request logging middleware
@@ -575,6 +596,7 @@ TroveLinkManager/
 │   │   ├── links.ts          # Link CRUD, search, archive, extraction routes
 │   │   ├── importExport.ts   # Import/export routes (HTML, CSV, JSON)
 │   │   ├── plugins.ts        # Plugin config, actions, and webhook routes
+│   │   ├── sse.ts            # GET /api/events — SSE endpoint for real-time link changes
 │   │   └── __tests__/        # Route-level tests
 │   ├── plugins/
 │   │   ├── manifest.ts       # Plugin manifest types + JSON validator

@@ -18,6 +18,7 @@ import {
   ValidationError,
   DuplicateUrlError,
 } from "../lib/errors";
+import { emitLinkEvent } from "../lib/events";
 
 const links = new Hono<{ Variables: AppVariables }>();
 
@@ -56,6 +57,9 @@ links.post("/api/links", async (c) => {
   const body = await c.req.json<{
     url?: string;
     title?: string;
+    description?: string;
+    content?: string;
+    rawHtml?: string;
     collectionId?: string;
     tags?: string[];
     source?: string;
@@ -100,12 +104,27 @@ links.post("/api/links", async (c) => {
     }
   }
 
-  // Fire-and-forget extraction
-  extractAndUpdate(db, link.id, body.url);
+  // If content was pre-extracted by the extension, store it directly and
+  // skip server-side extraction. Otherwise fire-and-forget as before.
+  if (body.content) {
+    const domain = new URL(body.url).hostname;
+    updateExtraction(db, link.id, {
+      title: body.title,
+      description: body.description,
+      content: body.content,
+      raw_html: body.rawHtml,
+      domain,
+      favicon_url: `https://www.google.com/s2/favicons?domain=${domain}&sz=64`,
+      extraction_status: "completed",
+    });
+  } else {
+    extractAndUpdate(db, link.id, body.url);
+  }
 
   // Re-fetch with tags
   const created = getLink(db, user.id, link.id)!;
 
+  emitLinkEvent({ type: "link:created", linkId: created.id, userId: user.id });
   return c.json(created, 201);
 });
 
@@ -163,6 +182,7 @@ links.patch("/api/links/:id", async (c) => {
   // Re-fetch with tags
   const result = getLink(db, user.id, updated.id)!;
 
+  emitLinkEvent({ type: "link:updated", linkId: result.id, userId: user.id });
   return c.json(result);
 });
 
@@ -184,6 +204,7 @@ links.delete("/api/links/:id", (c) => {
 
   deleteLink(db, user.id, id);
 
+  emitLinkEvent({ type: "link:deleted", linkId: id, userId: user.id });
   return c.body(null, 204);
 });
 
@@ -205,6 +226,7 @@ links.post("/api/links/:id/archive", (c) => {
 
   archiveLink(db, user.id, id);
 
+  emitLinkEvent({ type: "link:archived", linkId: id, userId: user.id });
   return c.json({ status: "archived" });
 });
 

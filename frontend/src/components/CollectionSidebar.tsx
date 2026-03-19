@@ -8,6 +8,8 @@ export interface CollectionSidebarProps {
   onSelectTag: (tag: string | null) => void;
   onOpenSettings?: () => void;
   isSettingsActive?: boolean;
+  userName?: string;
+  onSignOut?: () => void;
 }
 
 export default function CollectionSidebar({
@@ -17,6 +19,8 @@ export default function CollectionSidebar({
   onSelectTag,
   onOpenSettings,
   isSettingsActive = false,
+  userName,
+  onSignOut,
 }: CollectionSidebarProps) {
   const { collections, isLoading: collectionsLoading } = useCollections();
   const { tags, isLoading: tagsLoading } = useTags();
@@ -129,7 +133,7 @@ export default function CollectionSidebar({
 
       {/* Settings at bottom */}
       {onOpenSettings && (
-        <div className="px-3 pb-4 pt-2 border-t border-border dark:border-dark-border mt-auto shrink-0">
+        <div className="px-3 pb-2 pt-2 border-t border-border dark:border-dark-border mt-auto shrink-0">
           <button
             type="button"
             onClick={onOpenSettings}
@@ -140,6 +144,26 @@ export default function CollectionSidebar({
             </svg>
             <span className="flex-1 truncate text-left">Settings</span>
           </button>
+        </div>
+      )}
+
+      {/* User section */}
+      {userName && (
+        <div className="px-4 pb-4 pt-1 shrink-0">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted dark:text-dark-muted truncate">
+              {userName}
+            </span>
+            {onSignOut && (
+              <button
+                type="button"
+                onClick={onSignOut}
+                className="text-xs text-muted dark:text-dark-muted hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
+              >
+                Sign out
+              </button>
+            )}
+          </div>
         </div>
       )}
     </aside>

@@ -318,6 +318,8 @@ export default function AuthenticatedApp({
           onSelectTag={handleSelectTag}
           onOpenSettings={() => setShowSettings(true)}
           isSettingsActive={showSettings}
+          userName={user.name}
+          onSignOut={onLogout}
         />
       </div>
 
@@ -339,6 +341,8 @@ export default function AuthenticatedApp({
                 setIsMobileSidebarOpen(false);
               }}
               isSettingsActive={showSettings}
+              userName={user.name}
+              onSignOut={onLogout}
             />
           </div>
         </div>
@@ -374,31 +378,20 @@ export default function AuthenticatedApp({
                 setSelectedLinkId(null);
               }}
             />
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                onClick={() => setIsAddModalOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-md bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 px-3 py-1.5 text-sm font-medium hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors"
+            <button
+              type="button"
+              onClick={() => setIsAddModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-md bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 px-3 py-1.5 text-sm font-medium hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors"
+            >
+              <svg
+                className="h-4 w-4"
+                viewBox="0 0 20 20"
+                fill="currentColor"
               >
-                <svg
-                  className="h-4 w-4"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
-                </svg>
-                Add
-              </button>
-              <span className="text-sm text-muted dark:text-dark-muted">
-                {user.name}
-              </span>
-              <button
-                onClick={onLogout}
-                className="text-sm text-muted dark:text-dark-muted hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
-              >
-                Sign out
-              </button>
-            </div>
+                <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+              </svg>
+              Add
+            </button>
           </header>
 
           <main className="flex-1 overflow-y-auto">

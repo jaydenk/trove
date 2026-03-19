@@ -372,7 +372,7 @@ export const api = {
   admin: {
     listUsers: () => request<User[]>("/admin/users"),
 
-    createUser: (data: { name: string; email?: string }) =>
+    createUser: (data: { name: string; username: string; password: string; email?: string }) =>
       request<User & { apiToken: string }>("/admin/users", {
         method: "POST",
         body: JSON.stringify(data),

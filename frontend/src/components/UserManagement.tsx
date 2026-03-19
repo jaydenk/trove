@@ -62,6 +62,8 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
   // Add user form
   const [showAddForm, setShowAddForm] = useState(false);
   const [newName, setNewName] = useState("");
+  const [newUsername, setNewUsername] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [createdToken, setCreatedToken] = useState<string | null>(null);
@@ -93,16 +95,20 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
   }, [fetchUsers]);
 
   async function handleCreateUser() {
-    if (!newName.trim()) return;
+    if (!newName.trim() || !newUsername.trim() || !newPassword) return;
     setIsCreating(true);
     setError(null);
     try {
       const result = await api.admin.createUser({
         name: newName.trim(),
+        username: newUsername.trim(),
+        password: newPassword,
         email: newEmail.trim() || undefined,
       });
       setCreatedToken(result.apiToken);
       setNewName("");
+      setNewUsername("");
+      setNewPassword("");
       setNewEmail("");
       fetchUsers();
     } catch (err) {
@@ -149,6 +155,9 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
     );
   }
 
+  const inputClass =
+    "w-full rounded-md border border-border dark:border-dark-border bg-surface dark:bg-dark text-neutral-900 dark:text-neutral-100 placeholder:text-muted dark:placeholder:text-dark-muted px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-neutral-400 dark:focus:ring-neutral-600 transition-colors";
+
   return (
     <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
       {error && (
@@ -157,11 +166,14 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
         </div>
       )}
 
-      {/* Token reveal (shown once after creating a user) */}
+      {/* Success banner (shown once after creating a user) */}
       {createdToken && (
         <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 space-y-2">
           <p className="text-xs font-medium text-green-800 dark:text-green-300">
-            User created. Copy the API token now — it will not be shown again.
+            User created successfully. They can sign in with the username and password you provided.
+          </p>
+          <p className="text-xs text-green-700 dark:text-green-400">
+            API token for extension and API access (copy now — it will not be shown again):
           </p>
           <div className="flex items-center gap-2">
             <code className="flex-1 text-xs font-mono bg-white dark:bg-neutral-900 rounded px-2 py-1.5 text-green-900 dark:text-green-200 border border-green-200 dark:border-green-800 select-all break-all">
@@ -197,6 +209,11 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
                 <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100 truncate">
                   {u.name}
                 </span>
+                {u.username && (
+                  <span className="text-xs text-muted dark:text-dark-muted">
+                    @{u.username}
+                  </span>
+                )}
                 {u.isAdmin && (
                   <span className="inline-block px-1.5 py-0.5 rounded text-[11px] leading-tight bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
                     Admin
@@ -263,14 +280,34 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
               type="text"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              placeholder="User name"
-              className="w-full rounded-md border border-border dark:border-dark-border bg-surface dark:bg-dark text-neutral-900 dark:text-neutral-100 placeholder:text-muted dark:placeholder:text-dark-muted px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-neutral-400 dark:focus:ring-neutral-600 transition-colors"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleCreateUser();
-                }
-              }}
+              placeholder="Display name"
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted dark:text-dark-muted mb-1">
+              Username <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={newUsername}
+              onChange={(e) => setNewUsername(e.target.value)}
+              placeholder="Username for sign in"
+              autoComplete="off"
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted dark:text-dark-muted mb-1">
+              Password <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Password"
+              autoComplete="new-password"
+              className={inputClass}
             />
           </div>
           <div>
@@ -282,7 +319,7 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
               placeholder="user@example.com"
-              className="w-full rounded-md border border-border dark:border-dark-border bg-surface dark:bg-dark text-neutral-900 dark:text-neutral-100 placeholder:text-muted dark:placeholder:text-dark-muted px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-neutral-400 dark:focus:ring-neutral-600 transition-colors"
+              className={inputClass}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
@@ -295,7 +332,7 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
             <button
               type="button"
               onClick={handleCreateUser}
-              disabled={isCreating || !newName.trim()}
+              disabled={isCreating || !newName.trim() || !newUsername.trim() || !newPassword}
               className="inline-flex items-center gap-1.5 rounded-md bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 px-3 py-1.5 text-sm font-medium hover:bg-neutral-800 dark:hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {isCreating && <Spinner className="h-3 w-3" />}
@@ -306,6 +343,8 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
               onClick={() => {
                 setShowAddForm(false);
                 setNewName("");
+                setNewUsername("");
+                setNewPassword("");
                 setNewEmail("");
               }}
               className="text-sm text-muted dark:text-dark-muted hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"

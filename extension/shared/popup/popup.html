@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Save to Trove</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div id="main">
+    <div class="url-row">
+      <img id="favicon" class="favicon" src="" alt="" width="16" height="16">
+      <span id="urlText" class="url-text"></span>
+    </div>
+
+    <div class="field">
+      <label for="titleInput">Title</label>
+      <input type="text" id="titleInput" placeholder="Page title" spellcheck="false">
+    </div>
+
+    <div class="field">
+      <label for="collectionSelect">Collection</label>
+      <select id="collectionSelect">
+        <option value="">Inbox</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Tags</label>
+      <div class="tags-container" id="tagsContainer">
+        <div class="tags-pills" id="tagsPills"></div>
+        <input type="text" id="tagInput" class="tag-input" placeholder="Add tag…" spellcheck="false">
+      </div>
+    </div>
+
+    <button id="saveBtn" class="btn-save">Save to Trove</button>
+
+    <div id="status" class="status"></div>
+  </div>
+
+  <div id="notConfigured" class="not-configured" hidden>
+    <p>Trove is not configured yet.</p>
+    <a href="#" id="openOptions">Open Settings</a>
+  </div>
+
+  <script src="../lib/api.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

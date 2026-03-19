@@ -15,14 +15,36 @@ import {
 import { listTags, getOrCreateTag, addTagToLink } from "../../db/queries/tags";
 import { getPluginConfig } from "../../db/queries/pluginConfig";
 import { recordAction, listActionsForLink } from "../../db/queries/linkActions";
-import { registerPlugin, getPlugin, clearPlugins } from "../../plugins/registry";
-import { thingsPlugin } from "../../plugins/things";
+import {
+  insertPlugin,
+  getPluginById,
+  enablePluginForUser,
+} from "../../db/queries/plugins";
+import { executePlugin } from "../../plugins/executor";
 import type { Database } from "bun:sqlite";
+import type { TemplateContext } from "../../plugins/template";
 
 // Mock extractor to prevent real HTTP calls
 mock.module("../../services/extractor", () => ({
   extractAndUpdate: () => {},
 }));
+
+// Things manifest for testing
+const thingsManifest = {
+  id: "things",
+  name: "Things",
+  icon: "\u2705",
+  description: "Create a task in Things from a link",
+  version: "1.0.0",
+  direction: "export" as const,
+  config: {},
+  execute: {
+    type: "url-redirect" as const,
+    actionLabel: "Send to Things",
+    urlTemplate:
+      "things:///add?title={{link.title|urlencode}}&notes={{link.url|urlencode}}&tags=trove",
+  },
+};
 
 describe("MCP tool logic", () => {
   let db: Database;
@@ -39,7 +61,6 @@ describe("MCP tool logic", () => {
   });
 
   afterEach(() => {
-    clearPlugins();
     db.close();
   });
 
@@ -73,7 +94,7 @@ describe("MCP tool logic", () => {
     // FTS queries add a snippet field
     const match = result.data.find(
       (l) => l.title === "The Rust Programming Language",
-    ) as Record<string, unknown>;
+    ) as unknown as Record<string, unknown>;
     expect(match.snippet).toBeDefined();
   });
 
@@ -254,10 +275,12 @@ describe("MCP tool logic", () => {
   });
 
   // -----------------------------------------------------------------------
-  // 10. execute_action logic
+  // 10. execute_action logic (declarative things plugin)
   // -----------------------------------------------------------------------
   test("execute_action: things plugin returns redirect and records action", async () => {
-    registerPlugin(thingsPlugin);
+    // Insert the things plugin manifest into the DB
+    insertPlugin(db, thingsManifest, true);
+    enablePluginForUser(db, userId, "things");
 
     const link = createLink(db, userId, {
       url: "https://example.com/article-to-act-on",
@@ -265,17 +288,24 @@ describe("MCP tool logic", () => {
     });
 
     const fetched = getLink(db, userId, link.id)!;
-    const pluginLink = {
-      id: fetched.id,
-      url: fetched.url,
-      title: fetched.title,
-      description: fetched.description,
-      domain: fetched.domain,
-      tags: fetched.tags,
+
+    // Build template context as the MCP server does
+    const tagNames = fetched.tags.map((t) => t.name);
+    const context: TemplateContext = {
+      link: {
+        url: fetched.url,
+        title: fetched.title,
+        description: fetched.description,
+        domain: fetched.domain,
+        tags: tagNames.join(", "),
+        tagsArray: JSON.stringify(tagNames),
+      },
+      config: getPluginConfig(db, userId, "things"),
     };
 
-    const config = getPluginConfig(db, userId, "things");
-    const result = await thingsPlugin.execute!.run(pluginLink, config);
+    // Fetch the plugin from DB and execute
+    const plugin = getPluginById(db, "things")!;
+    const result = await executePlugin(plugin.manifest, context);
 
     expect(result.type).toBe("redirect");
     const redirect = result as { type: "redirect"; url: string };

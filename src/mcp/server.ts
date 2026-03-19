@@ -12,17 +12,19 @@ import {
 import { listTags, getOrCreateTag, addTagToLink } from "../db/queries/tags";
 import { getPluginConfig } from "../db/queries/pluginConfig";
 import { recordAction } from "../db/queries/linkActions";
-import { getPlugin } from "../plugins/registry";
-import { registerAllPlugins } from "../plugins/index";
+import { getPluginById, isPluginEnabledForUser } from "../db/queries/plugins";
+import { executePlugin } from "../plugins/executor";
+import { seedSystemPlugins } from "../seed";
 import { extractAndUpdate } from "../services/extractor";
-import type { PluginLink } from "../plugins/types";
+
+import type { TemplateContext } from "../plugins/template";
 
 // ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
 
 const db = getDb();
-registerAllPlugins();
+seedSystemPlugins(db);
 
 // ---------------------------------------------------------------------------
 // Auth — resolve the user from TROVE_API_TOKEN
@@ -368,7 +370,8 @@ server.registerTool(
         };
       }
 
-      const plugin = getPlugin(plugin_id);
+      // Fetch plugin from the database
+      const plugin = getPluginById(db, plugin_id);
       if (!plugin) {
         return {
           content: [
@@ -381,7 +384,7 @@ server.registerTool(
         };
       }
 
-      if (!plugin.execute) {
+      if (!plugin.manifest.execute) {
         return {
           content: [
             {
@@ -393,10 +396,23 @@ server.registerTool(
         };
       }
 
+      // Check plugin is enabled for the user
+      if (!isPluginEnabledForUser(db, userId, plugin_id)) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Error: Plugin "${plugin_id}" is not enabled for your account`,
+            },
+          ],
+          isError: true,
+        };
+      }
+
       const config = getPluginConfig(db, userId, plugin_id);
 
       // Check required config keys are present
-      const requiredKeys = Object.entries(plugin.configSchema)
+      const requiredKeys = Object.entries(plugin.manifest.config ?? {})
         .filter(([, field]) => field.required)
         .map(([key]) => key);
 
@@ -416,16 +432,21 @@ server.registerTool(
         };
       }
 
-      const pluginLink: PluginLink = {
-        id: link.id,
-        url: link.url,
-        title: link.title,
-        description: link.description,
-        domain: link.domain,
-        tags: link.tags,
+      // Build TemplateContext
+      const tagNames = link.tags.map((t) => t.name);
+      const context: TemplateContext = {
+        link: {
+          url: link.url,
+          title: link.title,
+          description: link.description,
+          domain: link.domain,
+          tags: tagNames.join(", "),
+          tagsArray: JSON.stringify(tagNames),
+        },
+        config,
       };
 
-      const result = await plugin.execute.run(pluginLink, config);
+      const result = await executePlugin(plugin.manifest, context);
 
       const actionMessage =
         result.type === "redirect" ? result.url : result.message;

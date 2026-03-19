@@ -6,7 +6,7 @@ export interface AuthState {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (token: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -43,17 +43,19 @@ export function useAuth(): AuthState {
   }, [validate]);
 
   const login = useCallback(
-    async (token: string) => {
+    async (username: string, password: string) => {
       setIsLoading(true);
-      setToken(token);
-      const valid = await validate();
-      if (!valid) {
-        clearToken();
-        throw new Error("Invalid token");
+      try {
+        const result = await api.auth.login(username, password);
+        setToken(result.token);
+        setUser(result.user);
+      } catch (err) {
+        throw err;
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     },
-    [validate],
+    [],
   );
 
   const logout = useCallback(() => {

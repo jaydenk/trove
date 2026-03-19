@@ -1,26 +1,27 @@
 import { useState } from "react";
 
 interface LoginScreenProps {
-  onLogin: (token: string) => Promise<void>;
+  onLogin: (username: string, password: string) => Promise<void>;
 }
 
 export default function LoginScreen({ onLogin }: LoginScreenProps) {
-  const [token, setToken] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmed = token.trim();
-    if (!trimmed) return;
+    const trimmedUser = username.trim();
+    if (!trimmedUser || !password) return;
 
     setError(null);
     setLoading(true);
 
     try {
-      await onLogin(trimmed);
+      await onLogin(trimmedUser, password);
     } catch {
-      setError("Invalid token. Please check your API token and try again.");
+      setError("Invalid username or password. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -34,22 +35,45 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
             Trove
           </h1>
           <p className="mt-2 text-muted dark:text-dark-muted">
-            Enter your API token to connect
+            Sign in to your account
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="token" className="sr-only">
-              API Token
+            <label htmlFor="username" className="sr-only">
+              Username
             </label>
             <input
-              id="token"
-              type="password"
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              placeholder="Paste your API token"
+              id="username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Username"
               autoFocus
+              autoComplete="username"
+              disabled={loading}
+              className="w-full rounded-lg border border-border dark:border-dark-border
+                         bg-card dark:bg-dark-card
+                         text-neutral-900 dark:text-neutral-100
+                         placeholder:text-muted dark:placeholder:text-dark-muted
+                         px-4 py-3 text-sm
+                         focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-600
+                         disabled:opacity-50"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="password" className="sr-only">
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password"
+              autoComplete="current-password"
               disabled={loading}
               className="w-full rounded-lg border border-border dark:border-dark-border
                          bg-card dark:bg-dark-card
@@ -69,7 +93,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
 
           <button
             type="submit"
-            disabled={loading || !token.trim()}
+            disabled={loading || !username.trim() || !password}
             className="w-full rounded-lg bg-neutral-900 dark:bg-neutral-100
                        text-white dark:text-neutral-900
                        py-3 text-sm font-medium
@@ -99,10 +123,10 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
                   />
                 </svg>
-                Validating...
+                Signing in...
               </span>
             ) : (
-              "Connect"
+              "Sign in"
             )}
           </button>
         </form>

@@ -6,6 +6,7 @@ export interface User {
   id: string;
   name: string;
   email: string | null;
+  username: string | null;
   isAdmin: boolean;
   createdAt: string;
 }
@@ -239,6 +240,25 @@ function buildQuery(params: Record<string, string | number | undefined>): string
 // ---------------------------------------------------------------------------
 
 export const api = {
+  auth: {
+    login: async (username: string, password: string): Promise<{ token: string; user: User }> => {
+      const res = await fetch(`${BASE}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new ApiError(
+          res.status,
+          body.error?.code || "AUTH_FAILED",
+          body.error?.message || "Invalid credentials",
+        );
+      }
+      return cameliseKeys(await res.json()) as { token: string; user: User };
+    },
+  },
+
   me: () => request<User>("/me"),
 
   links: {

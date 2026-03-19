@@ -16,6 +16,7 @@ export interface Link {
   title: string;
   description: string | null;
   content: string | null;
+  rawHtml: string | null;
   faviconUrl: string | null;
   imageUrl: string | null;
   domain: string | null;
@@ -55,6 +56,7 @@ export interface PluginInfo {
   configSchema: Record<string, { label: string; type: string; required: boolean }>;
   hasExecute: boolean;
   executeType: "api-call" | "url-redirect" | null;
+  actionLabel: string | null;
   hasIngest: boolean;
   isConfigured: boolean;
 }
@@ -339,6 +341,19 @@ export const api = {
 
     delete: (id: string) =>
       request<void>(`/tags/${id}`, { method: "DELETE" }),
+  },
+
+  admin: {
+    listUsers: () => request<User[]>("/admin/users"),
+
+    createUser: (data: { name: string; email?: string }) =>
+      request<User & { apiToken: string }>("/admin/users", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+
+    deleteUser: (id: string) =>
+      request<void>(`/admin/users/${id}`, { method: "DELETE" }),
   },
 
   importExport: {

@@ -290,7 +290,7 @@ function PluginActionRow({
         ) : (
           <span>{plugin.icon}</span>
         )}
-        <span>{plugin.name}</span>
+        <span>{plugin.actionLabel ?? plugin.name}</span>
       </button>
       {feedback && (
         <span
@@ -713,6 +713,25 @@ export default function LinkDetail({
               </p>
             </div>
           </div>
+        )}
+
+        {/* View Snapshot button */}
+        {link.rawHtml && (
+          <button
+            type="button"
+            onClick={() => {
+              const blob = new Blob([link.rawHtml!], { type: "text/html" });
+              const blobUrl = URL.createObjectURL(blob);
+              window.open(blobUrl, "_blank");
+              setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+            }}
+            className="inline-flex items-center gap-1.5 text-xs text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
+          >
+            <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M4.25 5.5a.75.75 0 00-.75.75v8.5c0 .414.336.75.75.75h8.5a.75.75 0 00.75-.75v-4a.75.75 0 011.5 0v4A2.25 2.25 0 0112.75 17h-8.5A2.25 2.25 0 012 14.75v-8.5A2.25 2.25 0 014.25 4h5a.75.75 0 010 1.5h-5zm7.25-.182a.75.75 0 01.182-.514l.042-.042a.75.75 0 01.514-.182h4.012a.75.75 0 01.75.75v4.012a.75.75 0 01-1.5 0V6.56l-5.22 5.22a.75.75 0 11-1.06-1.06l5.22-5.22h-2.69a.75.75 0 01-.75-.75z" />
+            </svg>
+            View Page Snapshot
+          </button>
         )}
 
         {/* Divider */}

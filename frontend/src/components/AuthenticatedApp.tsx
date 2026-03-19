@@ -72,6 +72,45 @@ export default function AuthenticatedApp({
     undefined,
   );
 
+  // -----------------------------------------------------------------------
+  // Theme preference (Fix 1: dark/light/system toggle)
+  // -----------------------------------------------------------------------
+
+  const [theme, setTheme] = useState<"light" | "dark" | "system">(() => {
+    const stored = localStorage.getItem("trove_theme");
+    if (stored === "light" || stored === "dark") return stored;
+    return "system";
+  });
+
+  useEffect(() => {
+    function applyTheme(pref: "light" | "dark" | "system") {
+      const html = document.documentElement;
+      if (pref === "dark") {
+        html.classList.add("dark");
+      } else if (pref === "light") {
+        html.classList.remove("dark");
+      } else {
+        // system — check matchMedia
+        if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+          html.classList.add("dark");
+        } else {
+          html.classList.remove("dark");
+        }
+      }
+    }
+
+    applyTheme(theme);
+    localStorage.setItem("trove_theme", theme);
+
+    // Listen for system changes when in "system" mode
+    if (theme === "system") {
+      const mq = window.matchMedia("(prefers-color-scheme: dark)");
+      const handler = () => applyTheme("system");
+      mq.addEventListener("change", handler);
+      return () => mq.removeEventListener("change", handler);
+    }
+  }, [theme]);
+
   const { collections, refetch: refetchCollections } = useCollections();
   const { plugins, refetch: refetchPlugins } = usePlugins();
 
@@ -311,6 +350,9 @@ export default function AuthenticatedApp({
           onRefreshCollections={refetchCollections}
           onRefreshPlugins={refetchPlugins}
           onClose={() => setShowSettings(false)}
+          theme={theme}
+          onThemeChange={setTheme}
+          user={user}
         />
       ) : (
         <div className="flex flex-1 flex-col min-w-0">

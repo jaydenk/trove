@@ -151,6 +151,7 @@ export default function SettingsView({
         <PluginSettings
           onClose={onClose}
           hideHeader
+          user={user}
         />
       ) : activeTab === "users" ? (
         <UserManagement currentUser={user} />

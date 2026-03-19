@@ -60,6 +60,10 @@ export interface PluginInfo {
   actionLabel: string | null;
   hasIngest: boolean;
   isConfigured: boolean;
+  direction: "export" | "ingest" | "both";
+  enabled: boolean;
+  isSystem: boolean;
+  version: string | null;
 }
 
 export interface PluginActionResult {
@@ -348,6 +352,21 @@ export const api = {
       request<PluginActionResult>(`/links/${linkId}/actions/${pluginId}`, {
         method: "POST",
       }),
+
+    upload: (manifest: object) =>
+      request<PluginInfo>("/plugins", {
+        method: "POST",
+        body: JSON.stringify(manifest),
+      }),
+
+    delete: (id: string) =>
+      request<void>(`/plugins/${id}`, { method: "DELETE" }),
+
+    enable: (id: string) =>
+      request<{ enabled: boolean }>(`/plugins/${id}/enable`, { method: "PUT" }),
+
+    disable: (id: string) =>
+      request<{ enabled: boolean }>(`/plugins/${id}/disable`, { method: "PUT" }),
   },
 
   tags: {

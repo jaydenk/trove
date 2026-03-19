@@ -11,7 +11,7 @@ Trove is a self-hosted personal link library for saving, organising, and searchi
 - **Archive support** to keep links without cluttering your active view
 - **Filtering** by collection, tag, domain, status, or source
 - **Import/export** bookmarks in HTML (Netscape), CSV, and JSON formats with round-trip support
-- **Plugin system** for extending Trove with external services (Readwise Reader, Things, n8n)
+- **Declarative plugin system** with JSON manifests for extending Trove (Readwise Reader, Things, n8n shipped; upload custom plugins via admin UI)
 - **MCP server** for AI assistant integration (search, browse, save links via Claude, etc.)
 - **Username/password authentication** for the web UI with argon2id password hashing (API token auth preserved for extensions and automation)
 - **Multi-user** with admin management
@@ -218,12 +218,22 @@ All API routes (under `/api/*`) require an `Authorization: Bearer <token>` heade
 
 ### Plugins
 
-| Method | Path                              | Auth | Description                                      |
-| ------ | --------------------------------- | ---- | ------------------------------------------------ |
-| GET    | `/api/plugins`                    | Yes  | List registered plugins with config status       |
-| GET    | `/api/plugins/:id/config`         | Yes  | Get plugin config and schema for current user    |
-| PUT    | `/api/plugins/:id/config`         | Yes  | Set plugin config values                         |
-| POST   | `/api/plugins/:id/webhook`        | Yes  | Inbound webhook for ingest plugins (e.g. n8n)   |
+| Method | Path                              | Auth  | Description                                            |
+| ------ | --------------------------------- | ----- | ------------------------------------------------------ |
+| GET    | `/api/plugins`                    | Yes   | List all plugins with user's enabled state and config  |
+| POST   | `/api/plugins`                    | Admin | Upload a new plugin manifest (JSON)                    |
+| DELETE | `/api/plugins/:id`                | Admin | Delete a non-system plugin                             |
+| PUT    | `/api/plugins/:id/enable`         | Yes   | Enable a plugin for the current user                   |
+| PUT    | `/api/plugins/:id/disable`        | Yes   | Disable a plugin for the current user                  |
+| GET    | `/api/plugins/:id/config`         | Yes   | Get plugin config and schema for current user          |
+| PUT    | `/api/plugins/:id/config`         | Yes   | Set plugin config values                               |
+| POST   | `/api/plugins/:id/webhook`        | Yes   | Inbound webhook for ingest plugins (e.g. n8n)          |
+
+**POST /api/plugins** accepts a JSON plugin manifest body. The manifest is validated and stored in the database. Returns the created plugin info. Only admins can upload plugins.
+
+**DELETE /api/plugins/:id** removes a plugin and its associated config/user state. System plugins (shipped with Trove) cannot be deleted.
+
+**PUT /api/plugins/:id/enable** and **PUT /api/plugins/:id/disable** toggle whether a plugin is active for the current user. Each user can independently enable or disable plugins.
 
 **PUT /api/plugins/:id/config** accepts a flat `Record<string, string>` body. Returns the updated config.
 
@@ -310,14 +320,58 @@ All three formats support round-trip: exporting and re-importing preserves URLs,
 
 ## Plugin System
 
-Trove includes a plugin system that lets you extend link management with external services. Plugins can provide two capabilities:
+Trove uses a **declarative JSON plugin system**. Plugins are JSON manifests stored in the database — no TypeScript code required. Each plugin defines its capabilities (export actions, ingest webhooks, or both), its configuration schema, and the templates for API calls or URL redirects. A built-in template engine interpolates variables like `{{link.url}}` and `{{config.API_TOKEN}}` at execution time.
 
-- **Execute actions** — perform an operation on a saved link (e.g. send it to a read-later service or create a task). These appear as action buttons on link cards and in the detail panel.
-- **Ingest links** — receive links from external automation tools via webhook, automatically saving them to Trove with tags and collection assignment.
+Plugins can provide two capabilities:
 
-Plugins are configured per-user through the **Plugin Settings** screen in the UI (accessible from the sidebar). Each plugin defines its own configuration schema — fill in the required fields to activate a plugin for your account.
+- **Export actions** — perform an operation on a saved link (e.g. send it to a read-later service or create a task). These appear as action buttons on link cards and in the detail panel.
+- **Ingest webhooks** — receive links from external automation tools via webhook, automatically saving them to Trove with tags and collection assignment.
+
+Plugins are managed per-user through the **Plugin Settings** screen in the UI (Settings > Plugins). Each user can independently enable or disable plugins. Admins can upload custom plugins or delete non-system plugins.
+
+### Plugin Manifest Format
+
+```json
+{
+  "id": "my-plugin",
+  "name": "My Plugin",
+  "icon": "...",
+  "description": "What the plugin does",
+  "version": "1.0.0",
+  "direction": "export",
+  "config": {
+    "API_TOKEN": { "label": "API Token", "type": "string", "required": true }
+  },
+  "execute": {
+    "type": "api-call",
+    "actionLabel": "Send",
+    "method": "POST",
+    "url": "https://api.example.com/save",
+    "headers": { "Authorization": "Bearer {{config.API_TOKEN}}" },
+    "body": { "url": "{{link.url}}", "title": "{{link.title}}" },
+    "successMessage": "Sent successfully"
+  }
+}
+```
+
+**Direction:** `"export"` (has execute block), `"ingest"` (has ingest block), or `"both"`.
+
+**Execute types:** `"api-call"` (makes an HTTP request) or `"url-redirect"` (returns a URL for the client to open).
+
+**Template variables:** `{{link.url}}`, `{{link.title}}`, `{{link.description}}`, `{{link.domain}}`, `{{link.tags}}` (comma-separated), `{{link.tagsArray}}` (JSON array), `{{config.KEY}}`.
+
+**Filters:** `|urlencode` (URL-encode), `|json` (JSON-stringify).
+
+### Creating a Custom Plugin
+
+1. Write a JSON manifest following the format above.
+2. Go to Settings > Plugins.
+3. Click "Upload Plugin" (admin only) and paste the JSON.
+4. Enable the plugin and fill in any required configuration.
 
 ### Shipped Plugins
+
+Three plugins are shipped as system plugins (cannot be deleted, auto-enabled for new users):
 
 #### Readwise Reader
 
@@ -523,12 +577,9 @@ TroveLinkManager/
 │   │   ├── plugins.ts        # Plugin config, actions, and webhook routes
 │   │   └── __tests__/        # Route-level tests
 │   ├── plugins/
-│   │   ├── index.ts          # Barrel file that registers all shipped plugins
-│   │   ├── types.ts          # Plugin system type definitions (TrovePlugin, PluginInfo, etc.)
-│   │   ├── registry.ts       # Plugin registry (register, lookup, list, config status)
-│   │   ├── reader.ts         # Readwise Reader plugin (send links for reading later)
-│   │   ├── things.ts         # Things plugin (create tasks via URL scheme)
-│   │   ├── n8n.ts            # n8n webhook ingest plugin (receive links from n8n workflows)
+│   │   ├── manifest.ts       # Plugin manifest types + JSON validator
+│   │   ├── template.ts       # Template engine (interpolate variables + filters)
+│   │   ├── executor.ts       # Execute api-call/url-redirect, handle ingest webhooks
 │   │   └── __tests__/        # Plugin-level tests
 │   ├── mcp/
 │   │   ├── server.ts         # MCP server (stdio transport, 7 tools)
@@ -548,6 +599,7 @@ TroveLinkManager/
 │           ├── collections.ts# Collection CRUD + default seeding
 │           ├── links.ts      # Link CRUD, FTS search, pagination
 │           ├── tags.ts       # Tag CRUD + link tagging
+│           ├── plugins.ts       # Plugin + user_plugins CRUD (DB-backed plugin registry)
 │           ├── pluginConfig.ts  # Per-user plugin configuration storage
 │           └── linkActions.ts   # Plugin action log (record + list)
 ├── frontend/                 # React + Vite frontend
@@ -589,7 +641,9 @@ TroveLinkManager/
 ├── Dockerfile                # Single-stage Bun-based container build
 ├── docker-compose.yml        # Portable compose file (no Traefik)
 ├── docker-compose.override.example.yml  # Traefik deployment template
-├── data/                     # SQLite database (gitignored)
+├── data/
+│   ├── plugins/              # Shipped plugin JSON manifests (Reader, Things, n8n)
+│   └── trove.db              # SQLite database (gitignored)
 ├── env.example
 ├── package.json
 └── tsconfig.json
@@ -603,6 +657,8 @@ Trove uses SQLite via Bun's built-in `bun:sqlite` driver with WAL mode and forei
 - **links** — Saved URLs with metadata, FTS5 full-text search
 - **collections** — User-defined groupings (5 defaults seeded per user)
 - **tags** / **link_tags** — Many-to-many tagging
+- **plugins** — Declarative JSON plugin manifests (system + user-uploaded)
+- **user_plugins** — Per-user plugin enable/disable state
 - **link_actions** — Plugin action log
 - **plugin_config** — Per-user plugin settings
 

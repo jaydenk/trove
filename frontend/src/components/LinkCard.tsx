@@ -156,9 +156,10 @@ export interface LinkCardProps {
   isSelectable?: boolean;
   isChecked?: boolean;
   onToggleSelect?: () => void;
+  onContextMenu?: (e: React.MouseEvent, link: Link) => void;
 }
 
-export default function LinkCard({ link, onClick, isSelected, isFocused, plugins, isSelectable, isChecked, onToggleSelect }: LinkCardProps) {
+export default function LinkCard({ link, onClick, isSelected, isFocused, plugins, isSelectable, isChecked, onToggleSelect, onContextMenu }: LinkCardProps) {
   const executablePlugins = plugins?.filter(
     (p) => p.hasExecute && p.isConfigured,
   );
@@ -167,6 +168,12 @@ export default function LinkCard({ link, onClick, isSelected, isFocused, plugins
     <button
       type="button"
       onClick={onClick}
+      onContextMenu={(e) => {
+        if (onContextMenu) {
+          e.preventDefault();
+          onContextMenu(e, link);
+        }
+      }}
       className={`group w-full text-left px-4 py-3 border-b border-border dark:border-dark-border transition-colors cursor-pointer ${
         isFocused
           ? "border-l-2 border-l-neutral-500 dark:border-l-neutral-400 pl-[14px]"

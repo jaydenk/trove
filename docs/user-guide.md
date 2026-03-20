@@ -57,6 +57,15 @@ Archiving moves a link out of your active view without deleting it.
 - **Viewing archived links** — click "Archive" in the left sidebar
 - **Difference from deleting** — archived links are preserved and searchable; deleted links are permanently removed
 
+## Context Menu
+
+Right-click any link card to open a context menu with quick actions:
+
+- **Archive / Unarchive** — toggle the link's archived state
+- **Delete** — permanently delete the link (with confirmation)
+- **Plugin actions** — send to configured export plugins (e.g. "Send to Reader", "Send to Things")
+- **Copy URL** — copy the link URL to your clipboard
+
 ## Link Detail Panel
 
 Click a link (or press `o` / `Enter` on a focused link) to open the detail panel on the right side.

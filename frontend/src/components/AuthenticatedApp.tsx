@@ -11,7 +11,8 @@ import SearchBar from "./SearchBar";
 import AddLinkModal from "./AddLinkModal";
 import BulkActionBar from "./BulkActionBar";
 import MobileNav from "./MobileNav";
-import type { User } from "../api";
+import ContextMenu from "./ContextMenu";
+import type { User, Link, PluginInfo } from "../api";
 
 /**
  * Sanitise FTS snippet HTML — only allow <b> tags used by SQLite snippet().
@@ -71,6 +72,13 @@ export default function AuthenticatedApp({
   const [bookmarkletTitle, setBookmarkletTitle] = useState<string | undefined>(
     undefined,
   );
+
+  // Context menu
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    link: Link;
+  } | null>(null);
 
   // -----------------------------------------------------------------------
   // Theme preference (Fix 1: dark/light/system toggle)
@@ -230,6 +238,74 @@ export default function AuthenticatedApp({
       refetchCollections();
     },
     [selectedLinkIds, refetchLinks, refetchCollections],
+  );
+
+  // -----------------------------------------------------------------------
+  // Context menu handlers
+  // -----------------------------------------------------------------------
+
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent, link: Link) => {
+      setContextMenu({ x: e.clientX, y: e.clientY, link });
+    },
+    [],
+  );
+
+  const handleContextArchive = useCallback(
+    async (link: Link) => {
+      try {
+        if (link.status === "archived") {
+          await api.links.update(link.id, { status: "saved" });
+        } else {
+          await api.links.archive(link.id);
+        }
+        refetchLinks();
+        refetchCollections();
+      } catch {
+        // Silently fail
+      }
+    },
+    [refetchLinks, refetchCollections],
+  );
+
+  const handleContextDelete = useCallback(
+    async (link: Link) => {
+      if (!window.confirm("Delete this link permanently?")) return;
+      try {
+        await api.links.delete(link.id);
+        if (selectedLinkId === link.id) setSelectedLinkId(null);
+        refetchLinks();
+        refetchCollections();
+      } catch {
+        // Silently fail
+      }
+    },
+    [selectedLinkId, refetchLinks, refetchCollections],
+  );
+
+  const handleContextPluginAction = useCallback(
+    async (link: Link, plugin: PluginInfo) => {
+      try {
+        const result = await api.plugins.executeAction(link.id, plugin.id);
+        if (result.type === "redirect" && result.url) {
+          window.open(result.url, "_blank", "noopener,noreferrer");
+        }
+      } catch {
+        // Silently fail
+      }
+    },
+    [],
+  );
+
+  const handleContextCopyUrl = useCallback(
+    async (link: Link) => {
+      try {
+        await navigator.clipboard.writeText(link.url);
+      } catch {
+        // Silently fail
+      }
+    },
+    [],
   );
 
   // -----------------------------------------------------------------------
@@ -472,6 +548,7 @@ export default function AuthenticatedApp({
                       isSelectable={isBulkMode}
                       isChecked={selectedLinkIds.has(link.id)}
                       onToggleSelect={() => toggleLinkSelection(link.id)}
+                      onContextMenu={handleContextMenu}
                     />
                     {/* FTS snippets use dangerouslySetInnerHTML because SQLite
                         snippet() returns <b> tags for match highlighting.
@@ -557,6 +634,20 @@ export default function AuthenticatedApp({
           onDelete={handleBulkDelete}
           onMoveToCollection={handleBulkMoveToCollection}
           onClearSelection={clearSelection}
+        />
+      )}
+
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          link={contextMenu.link}
+          plugins={plugins}
+          onClose={() => setContextMenu(null)}
+          onArchive={handleContextArchive}
+          onDelete={handleContextDelete}
+          onPluginAction={handleContextPluginAction}
+          onCopyUrl={handleContextCopyUrl}
         />
       )}
     </div>

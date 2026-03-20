@@ -657,6 +657,9 @@ export default function AuthenticatedApp({
                       isChecked={selectedLinkIds.has(link.id)}
                       onToggleSelect={() => toggleLinkSelection(link.id)}
                       onContextMenu={handleContextMenu}
+                      onArchive={handleContextArchive}
+                      onDelete={handleContextDelete}
+                      onPluginAction={handleContextPluginAction}
                     />
                     {/* FTS snippets use dangerouslySetInnerHTML because SQLite
                         snippet() returns <b> tags for match highlighting.

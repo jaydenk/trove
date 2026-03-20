@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { api } from "../api";
 import type { Link, PluginInfo } from "../api";
 
@@ -157,110 +157,275 @@ export interface LinkCardProps {
   isChecked?: boolean;
   onToggleSelect?: () => void;
   onContextMenu?: (e: React.MouseEvent, link: Link) => void;
+  onArchive?: (link: Link) => void;
+  onDelete?: (link: Link) => void;
+  onPluginAction?: (link: Link, plugin: PluginInfo) => void;
 }
 
-export default function LinkCard({ link, onClick, isSelected, isFocused, plugins, isSelectable, isChecked, onToggleSelect, onContextMenu }: LinkCardProps) {
+// ---------------------------------------------------------------------------
+// Swipe threshold and helpers
+// ---------------------------------------------------------------------------
+
+const SWIPE_THRESHOLD = 80;
+const MAX_SWIPE = 120;
+
+function useSwipe(
+  enabled: boolean,
+  onSwipeLeft: (() => void) | undefined,
+  onSwipeRight: (() => void) | undefined,
+) {
+  const startX = useRef(0);
+  const startY = useRef(0);
+  const currentOffset = useRef(0);
+  const isSwiping = useRef(false);
+  const [offset, setOffset] = useState(0);
+  const [triggered, setTriggered] = useState<"left" | "right" | null>(null);
+
+  const onTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      if (!enabled) return;
+      startX.current = e.touches[0].clientX;
+      startY.current = e.touches[0].clientY;
+      currentOffset.current = 0;
+      isSwiping.current = false;
+      setTriggered(null);
+    },
+    [enabled],
+  );
+
+  const onTouchMove = useCallback(
+    (e: React.TouchEvent) => {
+      if (!enabled) return;
+      const dx = e.touches[0].clientX - startX.current;
+      const dy = e.touches[0].clientY - startY.current;
+
+      // If vertical scroll is dominant, bail out
+      if (!isSwiping.current && Math.abs(dy) > Math.abs(dx)) return;
+      isSwiping.current = true;
+
+      // Clamp offset
+      const clamped = Math.max(-MAX_SWIPE, Math.min(MAX_SWIPE, dx));
+      // Only allow left swipe if handler exists, same for right
+      if (clamped < 0 && !onSwipeLeft) return;
+      if (clamped > 0 && !onSwipeRight) return;
+
+      currentOffset.current = clamped;
+      setOffset(clamped);
+    },
+    [enabled, onSwipeLeft, onSwipeRight],
+  );
+
+  const onTouchEnd = useCallback(() => {
+    if (!enabled || !isSwiping.current) return;
+
+    const off = currentOffset.current;
+    if (off < -SWIPE_THRESHOLD && onSwipeLeft) {
+      setTriggered("left");
+      // Animate out briefly then reset
+      setTimeout(() => {
+        onSwipeLeft();
+        setOffset(0);
+        setTriggered(null);
+      }, 200);
+    } else if (off > SWIPE_THRESHOLD && onSwipeRight) {
+      setTriggered("right");
+      setTimeout(() => {
+        onSwipeRight();
+        setOffset(0);
+        setTriggered(null);
+      }, 200);
+    } else {
+      setOffset(0);
+    }
+
+    isSwiping.current = false;
+  }, [enabled, onSwipeLeft, onSwipeRight]);
+
+  return { offset, triggered, onTouchStart, onTouchMove, onTouchEnd };
+}
+
+export default function LinkCard({
+  link,
+  onClick,
+  isSelected,
+  isFocused,
+  plugins,
+  isSelectable,
+  isChecked,
+  onToggleSelect,
+  onContextMenu,
+  onArchive,
+  onDelete,
+  onPluginAction,
+}: LinkCardProps) {
   const executablePlugins = plugins?.filter(
     (p) => p.hasExecute && p.isConfigured,
   );
 
+  // Mobile swipe: only on narrow viewports
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== "undefined" && window.innerWidth < 1024,
+  );
+
+  // Listen for resize to keep isMobile in sync
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 1024);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+
+  const firstPlugin = executablePlugins?.[0];
+
+  const handleSwipeLeft = onDelete
+    ? () => onDelete(link)
+    : undefined;
+
+  const handleSwipeRight = firstPlugin && onPluginAction
+    ? () => onPluginAction(link, firstPlugin)
+    : onArchive
+      ? () => onArchive(link)
+      : undefined;
+
+  const { offset, triggered, onTouchStart, onTouchMove, onTouchEnd } =
+    useSwipe(isMobile, handleSwipeLeft, handleSwipeRight);
+
+  // Background colours for swipe indicators
+  const swipeBg =
+    offset < 0
+      ? "bg-red-500"
+      : firstPlugin && onPluginAction
+        ? "bg-blue-500"
+        : "bg-green-500";
+
+  const swipeLabel =
+    offset < 0
+      ? "Delete"
+      : firstPlugin && onPluginAction
+        ? (firstPlugin.actionLabel ?? firstPlugin.name)
+        : "Archive";
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      onContextMenu={(e) => {
-        if (onContextMenu) {
-          e.preventDefault();
-          onContextMenu(e, link);
-        }
-      }}
-      className={`group w-full text-left px-4 py-3 border-b border-border dark:border-dark-border transition-colors cursor-pointer ${
-        isFocused
-          ? "border-l-2 border-l-neutral-500 dark:border-l-neutral-400 pl-[14px]"
-          : ""
-      } ${
-        isSelected
-          ? "bg-hover dark:bg-dark-hover"
-          : isChecked
-            ? "bg-blue-50 dark:bg-blue-950/20"
-            : "hover:bg-hover dark:hover:bg-dark-hover"
-      }`}
-    >
-      {/* Row 1: checkbox + favicon + title + extraction status + plugin actions */}
-      <div className="flex items-center gap-2 min-w-0">
-        {(isSelectable || isChecked) && (
-          <span
-            role="checkbox"
-            aria-checked={isChecked}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleSelect?.();
-            }}
-            onKeyDown={(e) => {
-              if (e.key === " " || e.key === "Enter") {
-                e.stopPropagation();
-                e.preventDefault();
-                onToggleSelect?.();
-              }
-            }}
-            tabIndex={0}
-            className={`shrink-0 flex items-center justify-center h-4 w-4 rounded border transition-colors cursor-pointer ${
-              isChecked
-                ? "bg-neutral-900 dark:bg-neutral-100 border-neutral-900 dark:border-neutral-100"
-                : "border-neutral-400 dark:border-neutral-500 hover:border-neutral-600 dark:hover:border-neutral-300"
-            }`}
-          >
-            {isChecked && (
-              <svg className="h-3 w-3 text-white dark:text-neutral-900" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
-              </svg>
-            )}
-          </span>
-        )}
-        {link.faviconUrl ? (
-          <img
-            src={link.faviconUrl}
-            alt=""
-            width={16}
-            height={16}
-            className="shrink-0 rounded-sm"
-          />
-        ) : (
-          <span className="shrink-0 w-4 h-4 rounded-sm bg-border dark:bg-dark-border" />
-        )}
-        <span className="font-medium text-sm text-neutral-900 dark:text-neutral-100 truncate">
-          {link.title || link.url}
-        </span>
-        <ExtractionIcon status={link.extractionStatus} />
-        {executablePlugins && executablePlugins.length > 0 && (
-          <span className="ml-auto flex items-center gap-0.5 shrink-0">
-            {executablePlugins.map((p) => (
-              <PluginActionButton key={p.id} link={link} plugin={p} />
-            ))}
-          </span>
-        )}
-      </div>
-
-      {/* Row 2: domain + relative time */}
-      <div className="mt-0.5 pl-6 flex items-center gap-2 text-xs text-muted dark:text-dark-muted">
-        {link.domain && <span className="truncate">{link.domain}</span>}
-        {link.domain && <span aria-hidden>·</span>}
-        <span className="whitespace-nowrap">{relativeTime(link.createdAt)}</span>
-      </div>
-
-      {/* Row 3: tags */}
-      {link.tags && link.tags.length > 0 && (
-        <div className="mt-1.5 pl-6 flex flex-wrap gap-1">
-          {link.tags.map((tag) => (
-            <span
-              key={tag.id}
-              className="inline-block px-1.5 py-0.5 text-[11px] leading-tight rounded bg-neutral-100 dark:bg-neutral-800 text-muted dark:text-dark-muted"
-            >
-              {tag.name}
-            </span>
-          ))}
+    <div className="relative overflow-hidden">
+      {/* Swipe background layer (mobile only) */}
+      {isMobile && offset !== 0 && (
+        <div
+          className={`absolute inset-0 flex items-center ${offset < 0 ? "justify-end" : "justify-start"} px-5 ${swipeBg} text-white text-sm font-medium`}
+        >
+          <span>{triggered ? swipeLabel : Math.abs(offset) >= SWIPE_THRESHOLD ? swipeLabel : ""}</span>
         </div>
       )}
-    </button>
+
+      <button
+        type="button"
+        onClick={(e) => {
+          // Don't fire click if we just finished a swipe
+          if (Math.abs(offset) > 5) return;
+          onClick();
+        }}
+        onContextMenu={(e) => {
+          if (onContextMenu) {
+            e.preventDefault();
+            onContextMenu(e, link);
+          }
+        }}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        style={
+          isMobile && offset !== 0
+            ? { transform: `translateX(${offset}px)`, transition: triggered ? "transform 0.2s ease-out" : "none" }
+            : triggered
+              ? { transition: "transform 0.2s ease-out" }
+              : undefined
+        }
+        className={`group w-full text-left px-4 py-3 border-b border-border dark:border-dark-border transition-colors cursor-pointer relative bg-surface dark:bg-dark ${
+          isFocused
+            ? "border-l-2 border-l-neutral-500 dark:border-l-neutral-400 pl-[14px]"
+            : ""
+        } ${
+          isSelected
+            ? "bg-hover dark:bg-dark-hover"
+            : isChecked
+              ? "bg-blue-50 dark:bg-blue-950/20"
+              : "hover:bg-hover dark:hover:bg-dark-hover"
+        }`}
+      >
+        {/* Row 1: checkbox + favicon + title + extraction status + plugin actions */}
+        <div className="flex items-center gap-2 min-w-0">
+          {(isSelectable || isChecked) && (
+            <span
+              role="checkbox"
+              aria-checked={isChecked}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleSelect?.();
+              }}
+              onKeyDown={(e) => {
+                if (e.key === " " || e.key === "Enter") {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  onToggleSelect?.();
+                }
+              }}
+              tabIndex={0}
+              className={`shrink-0 flex items-center justify-center h-4 w-4 rounded border transition-colors cursor-pointer ${
+                isChecked
+                  ? "bg-neutral-900 dark:bg-neutral-100 border-neutral-900 dark:border-neutral-100"
+                  : "border-neutral-400 dark:border-neutral-500 hover:border-neutral-600 dark:hover:border-neutral-300"
+              }`}
+            >
+              {isChecked && (
+                <svg className="h-3 w-3 text-white dark:text-neutral-900" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
+                </svg>
+              )}
+            </span>
+          )}
+          {link.faviconUrl ? (
+            <img
+              src={link.faviconUrl}
+              alt=""
+              width={16}
+              height={16}
+              className="shrink-0 rounded-sm"
+            />
+          ) : (
+            <span className="shrink-0 w-4 h-4 rounded-sm bg-border dark:bg-dark-border" />
+          )}
+          <span className="font-medium text-sm text-neutral-900 dark:text-neutral-100 truncate">
+            {link.title || link.url}
+          </span>
+          <ExtractionIcon status={link.extractionStatus} />
+          {executablePlugins && executablePlugins.length > 0 && (
+            <span className="ml-auto flex items-center gap-0.5 shrink-0">
+              {executablePlugins.map((p) => (
+                <PluginActionButton key={p.id} link={link} plugin={p} />
+              ))}
+            </span>
+          )}
+        </div>
+
+        {/* Row 2: domain + relative time */}
+        <div className="mt-0.5 pl-6 flex items-center gap-2 text-xs text-muted dark:text-dark-muted">
+          {link.domain && <span className="truncate">{link.domain}</span>}
+          {link.domain && <span aria-hidden>·</span>}
+          <span className="whitespace-nowrap">{relativeTime(link.createdAt)}</span>
+        </div>
+
+        {/* Row 3: tags */}
+        {link.tags && link.tags.length > 0 && (
+          <div className="mt-1.5 pl-6 flex flex-wrap gap-1">
+            {link.tags.map((tag) => (
+              <span
+                key={tag.id}
+                className="inline-block px-1.5 py-0.5 text-[11px] leading-tight rounded bg-neutral-100 dark:bg-neutral-800 text-muted dark:text-dark-muted"
+              >
+                {tag.name}
+              </span>
+            ))}
+          </div>
+        )}
+      </button>
+    </div>
   );
 }

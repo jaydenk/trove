@@ -49,15 +49,16 @@ export function listCollections(
   userId: string
 ): CollectionWithCount[] {
   return db
-    .query<CollectionWithCount, [string]>(
+    .query<CollectionWithCount, [string, string]>(
       `SELECT c.*, COALESCE(COUNT(l.id), 0) as link_count
        FROM collections c
        LEFT JOIN links l ON l.collection_id = c.id
+         OR (l.collection_id IS NULL AND l.user_id = c.user_id AND c.name = ?)
        WHERE c.user_id = ?
        GROUP BY c.id
        ORDER BY c.name`
     )
-    .all(userId);
+    .all("inbox", userId);
 }
 
 export function createCollection(

@@ -173,7 +173,19 @@ export function listLinks(
   }
 
   if (filters.collection_id) {
-    conditions.push("l.collection_id = ?");
+    // Check if the requested collection is the user's inbox.
+    // If so, also include links with NULL collection_id (orphaned links).
+    const isInbox = db
+      .query<{ id: string }, [string, string, string]>(
+        "SELECT id FROM collections WHERE id = ? AND user_id = ? AND name = ?"
+      )
+      .get(filters.collection_id, userId, "inbox");
+
+    if (isInbox) {
+      conditions.push("(l.collection_id = ? OR l.collection_id IS NULL)");
+    } else {
+      conditions.push("l.collection_id = ?");
+    }
     params.push(filters.collection_id);
   }
 

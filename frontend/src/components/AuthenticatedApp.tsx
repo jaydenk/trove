@@ -126,6 +126,22 @@ export default function AuthenticatedApp({
   const { collections, refetch: refetchCollections } = useCollections();
   const { plugins, refetch: refetchPlugins } = usePlugins();
 
+  // Default to inbox collection once collections are loaded
+  const inboxCollection = collections.find(
+    (c) => c.name.toLowerCase() === "inbox",
+  );
+
+  useEffect(() => {
+    if (
+      inboxCollection &&
+      selectedCollection === null &&
+      selectedTag === null &&
+      !showSettings
+    ) {
+      setSelectedCollection(inboxCollection.id);
+    }
+  }, [inboxCollection]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleSelectCollection = (id: string | null) => {
     setSelectedCollection(id);
     setSelectedTag(null);

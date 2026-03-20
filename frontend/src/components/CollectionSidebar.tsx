@@ -25,6 +25,10 @@ export default function CollectionSidebar({
   const { collections, isLoading: collectionsLoading } = useCollections();
   const { tags, isLoading: tagsLoading } = useTags();
 
+  const inboxCollectionId = collections.find(
+    (c) => c.name.toLowerCase() === "inbox",
+  )?.id ?? null;
+
   const itemBase =
     "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm cursor-pointer transition-colors select-none";
   const itemIdle =
@@ -38,7 +42,7 @@ export default function CollectionSidebar({
       <div className="px-4 py-4">
         <button
           type="button"
-          onClick={() => onSelectCollection(null)}
+          onClick={() => onSelectCollection(inboxCollectionId)}
           className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 tracking-tight hover:opacity-70 transition-opacity cursor-pointer"
         >
           Trove
@@ -52,16 +56,6 @@ export default function CollectionSidebar({
         </p>
 
         <nav className="flex flex-col gap-0.5">
-          {/* All links */}
-          <button
-            type="button"
-            onClick={() => onSelectCollection(null)}
-            className={`${itemBase} ${!isSettingsActive &&selectedCollection === null && selectedTag === null ? itemActive : itemIdle}`}
-          >
-            <span className="w-5 text-center">{"*"}</span>
-            <span className="flex-1 truncate text-left">All Links</span>
-          </button>
-
           {collectionsLoading ? (
             <span className="px-3 py-1.5 text-xs text-muted dark:text-dark-muted">
               Loading...
@@ -91,6 +85,16 @@ export default function CollectionSidebar({
           >
             <span className="w-5 text-center">🗄️</span>
             <span className="flex-1 truncate text-left">Archive</span>
+          </button>
+
+          {/* All links — below collections, muted styling */}
+          <button
+            type="button"
+            onClick={() => onSelectCollection(null)}
+            className={`${itemBase} text-xs ${!isSettingsActive && selectedCollection === null && selectedTag === null ? itemActive : "text-muted dark:text-dark-muted hover:bg-hover dark:hover:bg-dark-hover"}`}
+          >
+            <span className="w-5 text-center text-muted dark:text-dark-muted">*</span>
+            <span className="flex-1 truncate text-left">All Links</span>
           </button>
         </nav>
 

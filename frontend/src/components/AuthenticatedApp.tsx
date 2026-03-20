@@ -80,6 +80,10 @@ export default function AuthenticatedApp({
     link: Link;
   } | null>(null);
 
+  // Shortcut feedback toast
+  const [shortcutFeedback, setShortcutFeedback] = useState<string | null>(null);
+  const feedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // -----------------------------------------------------------------------
   // Theme preference (Fix 1: dark/light/system toggle)
   // -----------------------------------------------------------------------
@@ -309,6 +313,24 @@ export default function AuthenticatedApp({
   );
 
   // -----------------------------------------------------------------------
+  // Shortcut feedback helper
+  // -----------------------------------------------------------------------
+
+  const showFeedback = useCallback((msg: string) => {
+    if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
+    setShortcutFeedback(msg);
+    feedbackTimeout.current = setTimeout(() => setShortcutFeedback(null), 2000);
+  }, []);
+
+  // -----------------------------------------------------------------------
+  // Executable plugins list (for keyboard shortcuts + hints)
+  // -----------------------------------------------------------------------
+
+  const executablePlugins = plugins.filter(
+    (p) => p.hasExecute && p.isConfigured && p.enabled,
+  );
+
+  // -----------------------------------------------------------------------
   // Keyboard shortcuts (Task 6)
   // -----------------------------------------------------------------------
 
@@ -317,13 +339,20 @@ export default function AuthenticatedApp({
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
 
+      const focusedLink =
+        focusedLinkIndex >= 0 && focusedLinkIndex < links.length
+          ? links[focusedLinkIndex]
+          : null;
+
       switch (e.key) {
         case "/":
           e.preventDefault();
           searchRef.current?.focus();
           break;
         case "Escape":
-          if (selectedLinkIds.size > 0) {
+          if (contextMenu) {
+            setContextMenu(null);
+          } else if (selectedLinkIds.size > 0) {
             setSelectedLinkIds(new Set());
           } else if (selectedLinkId) {
             setSelectedLinkId(null);
@@ -346,15 +375,89 @@ export default function AuthenticatedApp({
           break;
         case "o":
         case "Enter":
-          if (focusedLinkIndex >= 0 && focusedLinkIndex < links.length) {
-            setSelectedLinkId(links[focusedLinkIndex].id);
+          if (focusedLink) {
+            setSelectedLinkId(focusedLink.id);
           }
           break;
         case "x":
-          if (focusedLinkIndex >= 0 && focusedLinkIndex < links.length) {
-            toggleLinkSelection(links[focusedLinkIndex].id);
+          if (focusedLink) {
+            toggleLinkSelection(focusedLink.id);
           }
           break;
+        case "a":
+          if (focusedLink) {
+            e.preventDefault();
+            (async () => {
+              try {
+                if (focusedLink.status === "archived") {
+                  await api.links.update(focusedLink.id, { status: "saved" });
+                  showFeedback("Unarchived");
+                } else {
+                  await api.links.archive(focusedLink.id);
+                  showFeedback("Archived");
+                }
+                refetchLinks();
+                refetchCollections();
+              } catch {
+                showFeedback("Archive failed");
+              }
+            })();
+          }
+          break;
+        case "d":
+          if (focusedLink) {
+            e.preventDefault();
+            if (window.confirm("Delete this link permanently?")) {
+              (async () => {
+                try {
+                  await api.links.delete(focusedLink.id);
+                  if (selectedLinkId === focusedLink.id) setSelectedLinkId(null);
+                  showFeedback("Deleted");
+                  refetchLinks();
+                  refetchCollections();
+                } catch {
+                  showFeedback("Delete failed");
+                }
+              })();
+            }
+          }
+          break;
+        case "1":
+        case "2":
+        case "3":
+        case "4":
+        case "5":
+        case "6":
+        case "7":
+        case "8":
+        case "9": {
+          if (!focusedLink) break;
+          const pluginIndex = parseInt(e.key, 10) - 1;
+          if (pluginIndex >= executablePlugins.length) break;
+          const plugin = executablePlugins[pluginIndex];
+          e.preventDefault();
+          showFeedback(`Sending to ${plugin.name}...`);
+          (async () => {
+            try {
+              const result = await api.plugins.executeAction(
+                focusedLink.id,
+                plugin.id,
+              );
+              if (result.type === "redirect" && result.url) {
+                window.open(result.url, "_blank", "noopener,noreferrer");
+                showFeedback(`Opened ${plugin.name}`);
+              } else if (result.type === "success") {
+                showFeedback(result.message ?? `Sent to ${plugin.name}`);
+              } else {
+                showFeedback(result.message ?? `${plugin.name} failed`);
+              }
+              refetchLinks();
+            } catch {
+              showFeedback(`${plugin.name} failed`);
+            }
+          })();
+          break;
+        }
       }
     }
     document.addEventListener("keydown", handleKeyDown);
@@ -365,6 +468,11 @@ export default function AuthenticatedApp({
     selectedLinkId,
     selectedLinkIds,
     toggleLinkSelection,
+    executablePlugins,
+    contextMenu,
+    showFeedback,
+    refetchLinks,
+    refetchCollections,
   ]);
 
   // Reset focused index when links change
@@ -594,6 +702,30 @@ export default function AuthenticatedApp({
               </button>
             </div>
           )}
+
+          {/* Keyboard shortcut hints when a link is focused */}
+          {focusedLinkIndex >= 0 && focusedLinkIndex < links.length && (
+            <div className="hidden lg:flex border-t border-border dark:border-dark-border px-4 py-2 items-center gap-3 text-[11px] text-muted dark:text-dark-muted shrink-0 flex-wrap">
+              <span>
+                <kbd className="px-1 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 font-mono text-[10px]">a</kbd>{" "}
+                {links[focusedLinkIndex].status === "archived"
+                  ? "Unarchive"
+                  : "Archive"}
+              </span>
+              <span>
+                <kbd className="px-1 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 font-mono text-[10px]">d</kbd>{" "}
+                Delete
+              </span>
+              {executablePlugins.map((p, i) => (
+                <span key={p.id}>
+                  <kbd className="px-1 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 font-mono text-[10px]">
+                    {i + 1}
+                  </kbd>{" "}
+                  {p.actionLabel ?? p.name}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -649,6 +781,13 @@ export default function AuthenticatedApp({
           onPluginAction={handleContextPluginAction}
           onCopyUrl={handleContextCopyUrl}
         />
+      )}
+
+      {/* Shortcut action feedback toast */}
+      {shortcutFeedback && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 text-sm shadow-lg">
+          {shortcutFeedback}
+        </div>
       )}
     </div>
   );

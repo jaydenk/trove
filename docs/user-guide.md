@@ -92,7 +92,12 @@ The following shortcuts are available when no input field is focused:
 | `o` | Open the focused link's detail panel |
 | `Enter` | Open the focused link's detail panel |
 | `x` | Toggle bulk selection on the focused link |
+| `a` | Archive (or unarchive) the focused link |
+| `d` | Delete the focused link (with confirmation) |
+| `1`–`9` | Send the focused link to the corresponding plugin |
 | `Cmd+K` | Focus the search bar |
+
+When a link is focused, a hint bar appears at the bottom of the link list showing available plugin shortcuts (e.g. "1 Send to Things", "2 Send to Reader"). A brief feedback toast confirms the action.
 
 ## Bulk Actions
 

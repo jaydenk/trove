@@ -456,6 +456,10 @@ export function connectSSE(
     `/api/events?token=${encodeURIComponent(token)}`,
   );
 
+  es.onopen = () => {
+    console.debug("[Trove SSE] Connected");
+  };
+
   const eventTypes = [
     "link:created",
     "link:updated",
@@ -475,7 +479,7 @@ export function connectSSE(
   }
 
   es.onerror = () => {
-    // EventSource automatically reconnects — no manual handling needed
+    console.debug("[Trove SSE] Connection error — will auto-reconnect");
   };
 
   return () => {

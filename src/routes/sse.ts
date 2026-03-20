@@ -20,6 +20,11 @@ sse.get("/api/events", async (c) => {
     throw new UnauthorizedError();
   }
 
+  // Prevent proxy buffering (Traefik, nginx, etc.)
+  c.header("Cache-Control", "no-cache");
+  c.header("X-Accel-Buffering", "no");
+  c.header("Connection", "keep-alive");
+
   return streamSSE(c, async (stream) => {
     // Subscribe to link events, filtered by this user's ID
     const unsubscribe = onLinkEvent((event) => {

@@ -14,13 +14,10 @@ import type { ImportItem } from "../services/importer";
 const importExport = new Hono<{ Variables: AppVariables }>();
 
 // ---------------------------------------------------------------------------
-// POST /api/import — Import links from uploaded data
+// POST /api/import/preview — Parse file and return detected items for review
 // ---------------------------------------------------------------------------
 
-importExport.post("/api/import", async (c) => {
-  const db = getDb();
-  const user = c.get("user");
-
+importExport.post("/api/import/preview", async (c) => {
   let format: string | undefined;
   let data: string | undefined;
 
@@ -34,7 +31,6 @@ importExport.post("/api/import", async (c) => {
     format = body.format;
     data = body.data;
   } else {
-    // Accept raw body text with content-type or query param for format
     data = await c.req.text();
     format = c.req.query("format");
 
@@ -51,11 +47,64 @@ importExport.post("/api/import", async (c) => {
     throw new ValidationError("No data provided");
   }
 
-  // Use smart import with optional format hint — auto-detects if no hint
-  const { items, errors: parseErrors, detectedFormat } = smartImport(
-    data,
-    format,
-  );
+  const { items, errors, detectedFormat } = smartImport(data, format);
+
+  return c.json({ detectedFormat, items, errors });
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/import — Import links from uploaded data or pre-parsed items
+// ---------------------------------------------------------------------------
+
+importExport.post("/api/import", async (c) => {
+  const db = getDb();
+  const user = c.get("user");
+
+  let items: ImportItem[] = [];
+  let parseErrors: string[] = [];
+  let detectedFormat: string | undefined;
+
+  const contentType = c.req.header("Content-Type") ?? "";
+
+  if (contentType.includes("application/json")) {
+    const body = await c.req.json<{
+      format?: string;
+      data?: string;
+      items?: ImportItem[];
+    }>();
+
+    if (Array.isArray(body.items) && body.items.length > 0) {
+      // Pre-parsed items from the preview flow — use directly
+      items = body.items;
+      detectedFormat = "preview";
+    } else if (body.data) {
+      // Raw data string — parse it
+      const result = smartImport(body.data, body.format);
+      items = result.items;
+      parseErrors = result.errors;
+      detectedFormat = result.detectedFormat;
+    } else {
+      throw new ValidationError("No data or items provided");
+    }
+  } else {
+    // Accept raw body text with content-type or query param for format
+    const data = await c.req.text();
+    const format = c.req.query("format") ??
+      (contentType.includes("text/html")
+        ? "html"
+        : contentType.includes("text/csv")
+          ? "csv"
+          : undefined);
+
+    if (!data) {
+      throw new ValidationError("No data provided");
+    }
+
+    const result = smartImport(data, format);
+    items = result.items;
+    parseErrors = result.errors;
+    detectedFormat = result.detectedFormat;
+  }
 
   let imported = 0;
   let skipped = 0;

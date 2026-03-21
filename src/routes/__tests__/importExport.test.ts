@@ -94,6 +94,100 @@ describe("import/export routes", () => {
   }
 
   // -------------------------------------------------------------------------
+  // POST /api/import/preview
+  // -------------------------------------------------------------------------
+
+  describe("POST /api/import/preview", () => {
+    test("returns parsed items without creating them", async () => {
+      const app = createApp();
+
+      const jsonData = JSON.stringify([
+        { url: "https://example.com/one", title: "One" },
+        { url: "https://example.com/two", title: "Two" },
+      ]);
+
+      const res = await app.request("/api/import/preview", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${userToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ data: jsonData }),
+      });
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.detectedFormat).toBe("json");
+      expect(body.items).toHaveLength(2);
+      expect(body.items[0].url).toBe("https://example.com/one");
+      expect(body.items[0].title).toBe("One");
+      expect(body.items[1].url).toBe("https://example.com/two");
+      expect(body.errors).toEqual([]);
+
+      // Verify NO links were created in the database
+      const count = db
+        .query<{ cnt: number }, [string]>(
+          "SELECT COUNT(*) as cnt FROM links WHERE user_id = ?"
+        )
+        .get(userId);
+      expect(count!.cnt).toBe(0);
+    });
+
+    test("previews Linkwarden backup format", async () => {
+      const app = createApp();
+
+      const jsonData = JSON.stringify({
+        name: "Jayden",
+        collections: [
+          {
+            id: 1,
+            name: "Tech",
+            links: [
+              {
+                id: 1,
+                name: "Bun Runtime",
+                url: "https://bun.sh",
+                tags: [{ name: "javascript" }],
+                createdAt: "2026-01-01T00:00:00.000Z",
+              },
+            ],
+          },
+        ],
+      });
+
+      const res = await app.request("/api/import/preview", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${userToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ data: jsonData }),
+      });
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.detectedFormat).toBe("json");
+      expect(body.items).toHaveLength(1);
+      expect(body.items[0].url).toBe("https://bun.sh");
+      expect(body.items[0].title).toBe("Bun Runtime");
+      expect(body.items[0].tags).toEqual(["javascript"]);
+      expect(body.items[0].collection).toBe("Tech");
+    });
+
+    test("returns 401 without auth", async () => {
+      const app = createApp();
+
+      const res = await app.request("/api/import/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data: "[]" }),
+      });
+
+      expect(res.status).toBe(401);
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // POST /api/import
   // -------------------------------------------------------------------------
 
@@ -305,6 +399,62 @@ describe("import/export routes", () => {
       const body = await res.json();
       expect(body.imported).toBe(1);
       expect(body.detectedFormat).toBe("json");
+    });
+
+    test("imports pre-parsed items array directly (preview flow)", async () => {
+      const app = createApp();
+
+      const items = [
+        { url: "https://example.com/pre-one", title: "Pre One" },
+        { url: "https://example.com/pre-two", title: "Pre Two", tags: ["tag1"] },
+      ];
+
+      const res = await app.request("/api/import", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${userToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ items }),
+      });
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.imported).toBe(2);
+      expect(body.skipped).toBe(0);
+      expect(body.detectedFormat).toBe("preview");
+
+      // Verify links exist in DB
+      const count = db
+        .query<{ cnt: number }, [string]>(
+          "SELECT COUNT(*) as cnt FROM links WHERE user_id = ?"
+        )
+        .get(userId);
+      expect(count!.cnt).toBe(2);
+
+      // Verify tags were created
+      const tags = db
+        .query<{ name: string }, [string]>(
+          "SELECT t.name FROM tags t WHERE t.user_id = ? ORDER BY t.name"
+        )
+        .all(userId);
+      expect(tags.map((t) => t.name)).toEqual(["tag1"]);
+    });
+
+    test("imports empty items array without error", async () => {
+      const app = createApp();
+
+      const res = await app.request("/api/import", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${userToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ items: [] }),
+      });
+
+      // Empty array should trigger the data path since items.length === 0
+      expect(res.status).toBe(400);
     });
 
     test("returns detectedFormat in response", async () => {

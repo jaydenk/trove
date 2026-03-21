@@ -414,7 +414,44 @@ export const api = {
   },
 
   importExport: {
-    import: (data: string) =>
+    preview: (data: string, format?: string) =>
+      request<{
+        detectedFormat: "html" | "json" | "csv" | "text";
+        items: Array<{
+          url: string;
+          title?: string;
+          description?: string;
+          tags?: string[];
+          collection?: string;
+          createdAt?: string;
+        }>;
+        errors: string[];
+      }>("/import/preview", {
+        method: "POST",
+        body: JSON.stringify({ data, format }),
+      }),
+
+    importItems: (
+      items: Array<{
+        url: string;
+        title?: string;
+        description?: string;
+        tags?: string[];
+        collection?: string;
+        createdAt?: string;
+      }>,
+    ) =>
+      request<{
+        imported: number;
+        skipped: number;
+        errors: string[];
+        detectedFormat: string;
+      }>("/import", {
+        method: "POST",
+        body: JSON.stringify({ items }),
+      }),
+
+    importRaw: (data: string, format?: string) =>
       request<{
         imported: number;
         skipped: number;
@@ -422,7 +459,7 @@ export const api = {
         detectedFormat: "html" | "json" | "csv" | "text";
       }>("/import", {
         method: "POST",
-        body: JSON.stringify({ data }),
+        body: JSON.stringify({ data, format }),
       }),
   },
 };

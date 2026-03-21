@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo, useCallback } from "react";
 import { api, downloadExport, ApiError } from "../api";
 
 // ---------------------------------------------------------------------------
@@ -37,11 +37,20 @@ interface ImportExportSettingsProps {
   onImportComplete?: () => void;
 }
 
+interface PreviewItem {
+  url: string;
+  title?: string;
+  description?: string;
+  tags?: string[];
+  collection?: string;
+  createdAt?: string;
+}
+
 interface ImportResult {
   imported: number;
   skipped: number;
   errors: string[];
-  detectedFormat: "html" | "json" | "csv" | "text";
+  detectedFormat: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -53,7 +62,16 @@ const FORMAT_LABELS: Record<string, string> = {
   json: "JSON",
   csv: "CSV/TSV",
   text: "Plain text",
+  preview: "Preview",
 };
+
+function getDomain(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -65,12 +83,33 @@ export default function ImportExportSettings({
   // Import state
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewing, setPreviewing] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
 
+  // Preview state
+  const [previewItems, setPreviewItems] = useState<PreviewItem[]>([]);
+  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(
+    new Set(),
+  );
+  const [detectedFormat, setDetectedFormat] = useState<string | null>(null);
+  const [previewErrors, setPreviewErrors] = useState<string[]>([]);
+
   // Export state
   const [exportingFormat, setExportingFormat] = useState<string | null>(null);
+
+  const showingPreview = previewItems.length > 0;
+  const selectedCount = selectedIndices.size;
+
+  // Memoised list of unique collections in the preview
+  const previewCollections = useMemo(() => {
+    const set = new Set<string>();
+    for (const item of previewItems) {
+      if (item.collection) set.add(item.collection);
+    }
+    return Array.from(set).sort();
+  }, [previewItems]);
 
   // -----------------------------------------------------------------------
   // Import handlers
@@ -81,19 +120,66 @@ export default function ImportExportSettings({
     setSelectedFile(file);
     setImportResult(null);
     setImportError(null);
+    clearPreview();
   }
 
-  async function handleImport() {
-    if (!selectedFile) return;
+  function clearPreview() {
+    setPreviewItems([]);
+    setSelectedIndices(new Set());
+    setDetectedFormat(null);
+    setPreviewErrors([]);
+  }
 
-    setImporting(true);
+  function resetAll() {
+    setSelectedFile(null);
     setImportResult(null);
     setImportError(null);
+    clearPreview();
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
+
+  async function handlePreview() {
+    if (!selectedFile) return;
+
+    setPreviewing(true);
+    setImportResult(null);
+    setImportError(null);
+    clearPreview();
 
     try {
       const data = await selectedFile.text();
-      const result = await api.importExport.import(data);
+      const result = await api.importExport.preview(data);
+      setPreviewItems(result.items);
+      setSelectedIndices(new Set(result.items.map((_, i) => i)));
+      setDetectedFormat(result.detectedFormat);
+      setPreviewErrors(result.errors);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setImportError(err.message);
+      } else {
+        setImportError("Failed to preview file. Please try again.");
+      }
+    } finally {
+      setPreviewing(false);
+    }
+  }
+
+  async function handleImportSelected() {
+    if (selectedCount === 0) return;
+
+    setImporting(true);
+    setImportError(null);
+    setImportResult(null);
+
+    try {
+      const itemsToImport = previewItems.filter((_, i) =>
+        selectedIndices.has(i),
+      );
+      const result = await api.importExport.importItems(itemsToImport);
       setImportResult(result);
+      clearPreview();
       setSelectedFile(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
@@ -112,19 +198,38 @@ export default function ImportExportSettings({
     }
   }
 
+  const toggleItem = useCallback((index: number) => {
+    setSelectedIndices((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  }, []);
+
+  function toggleAll() {
+    if (selectedCount === previewItems.length) {
+      setSelectedIndices(new Set());
+    } else {
+      setSelectedIndices(new Set(previewItems.map((_, i) => i)));
+    }
+  }
+
   // -----------------------------------------------------------------------
   // Export handlers
   // -----------------------------------------------------------------------
 
   async function handleExport(
     format: "json" | "csv" | "html",
-    filename: string
+    filename: string,
   ) {
     setExportingFormat(format);
     try {
       await downloadExport(`/export/${format}`, filename);
     } catch (err) {
-      // Silently fail — the download just won't happen
       console.error("Export failed:", err);
     } finally {
       setExportingFormat(null);
@@ -142,6 +247,8 @@ export default function ImportExportSettings({
     "inline-flex items-center gap-1.5 rounded-md bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 px-3 py-1.5 text-sm font-medium hover:bg-neutral-800 dark:hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors";
   const btnSecondary =
     "inline-flex items-center gap-1.5 rounded-md border border-border dark:border-dark-border bg-surface dark:bg-dark text-neutral-900 dark:text-neutral-100 px-3 py-1.5 text-sm font-medium hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors";
+  const btnDanger =
+    "inline-flex items-center gap-1.5 rounded-md border border-border dark:border-dark-border bg-surface dark:bg-dark text-red-600 dark:text-red-400 px-3 py-1.5 text-sm font-medium hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors";
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -152,34 +259,169 @@ export default function ImportExportSettings({
         <div>
           <h3 className={sectionTitle}>Import</h3>
           <p className={sectionDesc}>
-            Import links from any file — browser bookmarks, spreadsheets, JSON
-            exports, or plain text with URLs. The format is auto-detected.
+            Import links from any file — browser bookmarks, Linkwarden backups,
+            spreadsheets, JSON exports, or plain text with URLs. The format is
+            auto-detected and you can review items before importing.
           </p>
 
           <div className="mt-3 space-y-3">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".html,.htm,.csv,.tsv,.json,.txt,.md"
-              onChange={handleFileSelect}
-              className="block w-full text-sm text-muted dark:text-dark-muted file:mr-3 file:rounded-md file:border file:border-border dark:file:border-dark-border file:bg-surface dark:file:bg-dark file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-neutral-900 dark:file:text-neutral-100 file:cursor-pointer hover:file:bg-neutral-50 dark:hover:file:bg-neutral-800 file:transition-colors"
-            />
+            {!showingPreview && (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".html,.htm,.csv,.tsv,.json,.txt,.md"
+                  onChange={handleFileSelect}
+                  className="block w-full text-sm text-muted dark:text-dark-muted file:mr-3 file:rounded-md file:border file:border-border dark:file:border-dark-border file:bg-surface dark:file:bg-dark file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-neutral-900 dark:file:text-neutral-100 file:cursor-pointer hover:file:bg-neutral-50 dark:hover:file:bg-neutral-800 file:transition-colors"
+                />
 
-            {selectedFile && (
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-muted dark:text-dark-muted truncate">
-                  {selectedFile.name} (
-                  {(selectedFile.size / 1024).toFixed(1)} KB)
-                </span>
-                <button
-                  type="button"
-                  onClick={handleImport}
-                  disabled={importing}
-                  className={btnPrimary}
-                >
-                  {importing && <Spinner className="h-3 w-3" />}
-                  {importing ? "Importing..." : "Import"}
-                </button>
+                {selectedFile && (
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-muted dark:text-dark-muted truncate">
+                      {selectedFile.name} (
+                      {(selectedFile.size / 1024).toFixed(1)} KB)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handlePreview}
+                      disabled={previewing}
+                      className={btnPrimary}
+                    >
+                      {previewing && <Spinner className="h-3 w-3" />}
+                      {previewing ? "Scanning..." : "Preview"}
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* ------------------------------------------------------------- */}
+            {/* Preview table                                                   */}
+            {/* ------------------------------------------------------------- */}
+            {showingPreview && (
+              <div className="space-y-3">
+                {/* Header: format badge + counts */}
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    {detectedFormat && (
+                      <span className="inline-flex items-center rounded-full bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 text-xs font-medium text-neutral-700 dark:text-neutral-300">
+                        {FORMAT_LABELS[detectedFormat] ?? detectedFormat}
+                      </span>
+                    )}
+                    <span className="text-xs text-muted dark:text-dark-muted">
+                      {selectedCount} of {previewItems.length} item
+                      {previewItems.length !== 1 ? "s" : ""} selected
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={toggleAll}
+                      className={btnSecondary}
+                    >
+                      {selectedCount === previewItems.length
+                        ? "Deselect All"
+                        : "Select All"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Preview warnings */}
+                {previewErrors.length > 0 && (
+                  <div className="rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-3 py-2">
+                    <ul className="space-y-0.5">
+                      {previewErrors.map((err, i) => (
+                        <li
+                          key={i}
+                          className="text-xs text-amber-700 dark:text-amber-400"
+                        >
+                          {err}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Collection filter legend */}
+                {previewCollections.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {previewCollections.map((col) => (
+                      <span
+                        key={col}
+                        className="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 px-2 py-0.5 text-[11px] text-blue-700 dark:text-blue-400"
+                      >
+                        {col}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Scrollable item list */}
+                <div className="max-h-80 overflow-y-auto rounded-md border border-border dark:border-dark-border divide-y divide-border dark:divide-dark-border">
+                  {previewItems.map((item, index) => {
+                    const checked = selectedIndices.has(index);
+                    return (
+                      <label
+                        key={index}
+                        className={`flex items-start gap-2.5 px-3 py-2 cursor-pointer transition-colors ${
+                          checked
+                            ? "bg-white dark:bg-dark-surface"
+                            : "bg-neutral-50 dark:bg-neutral-900/50 opacity-60"
+                        } hover:bg-neutral-50 dark:hover:bg-neutral-800/50`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleItem(index)}
+                          className="mt-0.5 rounded border-border dark:border-dark-border text-neutral-900 dark:text-neutral-100 focus:ring-1 focus:ring-neutral-400 flex-shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm text-neutral-900 dark:text-neutral-100 truncate">
+                            {item.title || item.url}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+                            <span className="text-[11px] text-muted dark:text-dark-muted truncate">
+                              {getDomain(item.url)}
+                            </span>
+                            {item.collection && (
+                              <span className="text-[11px] text-blue-600 dark:text-blue-400">
+                                {item.collection}
+                              </span>
+                            )}
+                            {item.tags && item.tags.length > 0 && (
+                              <span className="text-[11px] text-muted dark:text-dark-muted">
+                                {item.tags.join(", ")}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleImportSelected}
+                    disabled={importing || selectedCount === 0}
+                    className={btnPrimary}
+                  >
+                    {importing && <Spinner className="h-3 w-3" />}
+                    {importing
+                      ? "Importing..."
+                      : `Import ${selectedCount} item${selectedCount !== 1 ? "s" : ""}`}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={resetAll}
+                    disabled={importing}
+                    className={btnDanger}
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             )}
 
@@ -187,12 +429,13 @@ export default function ImportExportSettings({
             {importResult && (
               <div className="rounded-md bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 px-3 py-2">
                 <p className="text-sm text-green-700 dark:text-green-400">
-                  Detected format: {FORMAT_LABELS[importResult.detectedFormat] ?? importResult.detectedFormat}.
-                  {" "}Imported {importResult.imported} link
+                  Imported {importResult.imported} link
                   {importResult.imported !== 1 ? "s" : ""}
                   {importResult.skipped > 0 && (
-                    <>, skipped {importResult.skipped} duplicate
-                    {importResult.skipped !== 1 ? "s" : ""}</>
+                    <>
+                      , skipped {importResult.skipped} duplicate
+                      {importResult.skipped !== 1 ? "s" : ""}
+                    </>
                   )}
                   .
                 </p>

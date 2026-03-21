@@ -637,6 +637,11 @@ export default function AuthenticatedApp({
             theme={theme}
             onThemeChange={setTheme}
             user={user}
+            plugins={plugins}
+            swipeLeftAction={swipeLeftAction}
+            swipeRightAction={swipeRightAction}
+            onSwipeLeftChange={setSwipeLeftAction}
+            onSwipeRightChange={setSwipeRightAction}
           />
         </div>
       ) : (

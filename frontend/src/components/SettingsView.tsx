@@ -4,7 +4,8 @@ import CollectionManager from "./CollectionManager";
 import PluginSettings from "./PluginSettings";
 import ImportExportSettings from "./ImportExportSettings";
 import UserManagement from "./UserManagement";
-import type { Collection, User } from "../api";
+import type { Collection, PluginInfo, User } from "../api";
+import type { SwipeAction } from "./LinkCard";
 
 type ThemePreference = "light" | "dark" | "system";
 
@@ -16,6 +17,11 @@ interface SettingsViewProps {
   theme: ThemePreference;
   onThemeChange: (theme: ThemePreference) => void;
   user: User;
+  plugins: PluginInfo[];
+  swipeLeftAction: SwipeAction;
+  swipeRightAction: SwipeAction;
+  onSwipeLeftChange: (action: SwipeAction) => void;
+  onSwipeRightChange: (action: SwipeAction) => void;
 }
 
 type SettingsTab = "account" | "appearance" | "collections" | "plugins" | "import-export" | "users";
@@ -28,6 +34,11 @@ export default function SettingsView({
   theme,
   onThemeChange,
   user,
+  plugins,
+  swipeLeftAction,
+  swipeRightAction,
+  onSwipeLeftChange,
+  onSwipeRightChange,
 }: SettingsViewProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>("appearance");
 
@@ -119,25 +130,52 @@ export default function SettingsView({
       {activeTab === "account" ? (
         <AccountSettings user={user} />
       ) : activeTab === "appearance" ? (
-        <div className="flex-1 overflow-y-auto p-6">
-          <h3 className="text-sm font-medium text-neutral-900 dark:text-neutral-100 mb-3">
-            Theme
-          </h3>
-          <div className="inline-flex rounded-md border border-border dark:border-dark-border overflow-hidden">
-            {(["light", "dark", "system"] as const).map((opt) => (
-              <button
-                key={opt}
-                type="button"
-                onClick={() => onThemeChange(opt)}
-                className={`px-3 py-1.5 text-sm font-medium transition-colors capitalize ${
-                  theme === opt
-                    ? "bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900"
-                    : "text-neutral-600 dark:text-neutral-400 hover:bg-hover dark:hover:bg-dark-hover"
-                }`}
-              >
-                {opt}
-              </button>
-            ))}
+        <div className="flex-1 overflow-y-auto p-6 space-y-8">
+          {/* Theme */}
+          <div>
+            <h3 className="text-sm font-medium text-neutral-900 dark:text-neutral-100 mb-3">
+              Theme
+            </h3>
+            <div className="inline-flex rounded-md border border-border dark:border-dark-border overflow-hidden">
+              {(["light", "dark", "system"] as const).map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => onThemeChange(opt)}
+                  className={`px-3 py-1.5 text-sm font-medium transition-colors capitalize ${
+                    theme === opt
+                      ? "bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900"
+                      : "text-neutral-600 dark:text-neutral-400 hover:bg-hover dark:hover:bg-dark-hover"
+                  }`}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Swipe Actions */}
+          <div>
+            <h3 className="text-sm font-medium text-neutral-900 dark:text-neutral-100 mb-1">
+              Swipe Actions
+            </h3>
+            <p className="text-xs text-muted dark:text-dark-muted mb-4">
+              Configure what swiping left and right on link cards does on mobile.
+            </p>
+            <div className="space-y-4 max-w-sm">
+              <SwipeActionSelect
+                label="Swipe Left"
+                value={swipeLeftAction}
+                onChange={onSwipeLeftChange}
+                plugins={plugins}
+              />
+              <SwipeActionSelect
+                label="Swipe Right"
+                value={swipeRightAction}
+                onChange={onSwipeRightChange}
+                plugins={plugins}
+              />
+            </div>
           </div>
         </div>
       ) : activeTab === "collections" ? (
@@ -160,6 +198,48 @@ export default function SettingsView({
           onImportComplete={onRefreshCollections}
         />
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Swipe action dropdown
+// ---------------------------------------------------------------------------
+
+function SwipeActionSelect({
+  label,
+  value,
+  onChange,
+  plugins,
+}: {
+  label: string;
+  value: SwipeAction;
+  onChange: (action: SwipeAction) => void;
+  plugins: PluginInfo[];
+}) {
+  const executablePlugins = plugins.filter(
+    (p) => p.hasExecute && p.isConfigured && p.enabled,
+  );
+
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <label className="text-sm text-neutral-700 dark:text-neutral-300 shrink-0">
+        {label}
+      </label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value as SwipeAction)}
+        className="text-sm rounded-md border border-border dark:border-dark-border bg-surface dark:bg-dark px-3 py-1.5 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-1 focus:ring-neutral-400 dark:focus:ring-neutral-500"
+      >
+        <option value="archive">Archive</option>
+        <option value="delete">Delete</option>
+        <option value="none">None</option>
+        {executablePlugins.map((p) => (
+          <option key={p.id} value={`plugin:${p.id}`}>
+            {p.icon} {p.actionLabel ?? p.name}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }

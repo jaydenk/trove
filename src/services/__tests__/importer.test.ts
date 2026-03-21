@@ -410,6 +410,179 @@ describe("parseJsonFlexible", () => {
     expect(result.errors).toHaveLength(1);
   });
 
+  test("parses Linkwarden backup format with nested collections/links", () => {
+    const json = JSON.stringify({
+      name: "Jayden",
+      collections: [
+        {
+          id: 1,
+          name: "Unorganized",
+          links: [
+            {
+              id: 626,
+              name: "How To Know What Turns You On",
+              url: "https://itsnormal.com/article/1",
+              tags: [{ name: "Supernote" }, { name: "Manta" }],
+              createdAt: "2026-02-10T02:02:42.219Z",
+            },
+          ],
+        },
+        {
+          id: 2,
+          name: "Tech Stuff",
+          links: [
+            {
+              id: 700,
+              name: "Bun Runtime",
+              url: "https://bun.sh",
+              tags: [{ name: "javascript" }],
+              createdAt: "2026-03-01T10:00:00.000Z",
+            },
+            {
+              id: 701,
+              name: "Hono Framework",
+              url: "https://hono.dev",
+              tags: [],
+              createdAt: "2026-03-02T12:00:00.000Z",
+            },
+          ],
+        },
+      ],
+    });
+
+    const result = parseJsonFlexible(json);
+    expect(result.errors).toHaveLength(0);
+    expect(result.items).toHaveLength(3);
+    expect(result.detectedFormat).toBe("json");
+
+    // First collection's link
+    expect(result.items[0]).toEqual({
+      url: "https://itsnormal.com/article/1",
+      title: "How To Know What Turns You On",
+      tags: ["Supernote", "Manta"],
+      collection: "Unorganized",
+      createdAt: "2026-02-10T02:02:42.219Z",
+    });
+
+    // Second collection's links
+    expect(result.items[1]).toEqual({
+      url: "https://bun.sh",
+      title: "Bun Runtime",
+      tags: ["javascript"],
+      collection: "Tech Stuff",
+      createdAt: "2026-03-01T10:00:00.000Z",
+    });
+
+    expect(result.items[2]).toEqual({
+      url: "https://hono.dev",
+      title: "Hono Framework",
+      collection: "Tech Stuff",
+      createdAt: "2026-03-02T12:00:00.000Z",
+    });
+  });
+
+  test("parses Linkwarden format with empty collections", () => {
+    const json = JSON.stringify({
+      name: "User",
+      collections: [
+        { id: 1, name: "Empty", links: [] },
+        {
+          id: 2,
+          name: "Has Links",
+          links: [
+            { id: 1, name: "Link One", url: "https://example.com" },
+          ],
+        },
+      ],
+    });
+
+    const result = parseJsonFlexible(json);
+    expect(result.errors).toHaveLength(0);
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].url).toBe("https://example.com");
+    expect(result.items[0].collection).toBe("Has Links");
+  });
+
+  test("parses Linkwarden format with duplicate collection names", () => {
+    const json = JSON.stringify({
+      name: "User",
+      collections: [
+        {
+          id: 1,
+          name: "Imports",
+          links: [{ id: 1, name: "A", url: "https://a.com" }],
+        },
+        {
+          id: 2,
+          name: "Imports",
+          links: [{ id: 2, name: "B", url: "https://b.com" }],
+        },
+      ],
+    });
+
+    const result = parseJsonFlexible(json);
+    expect(result.errors).toHaveLength(0);
+    expect(result.items).toHaveLength(2);
+    // Both get the same collection name
+    expect(result.items[0].collection).toBe("Imports");
+    expect(result.items[1].collection).toBe("Imports");
+  });
+
+  test("handles Linkwarden tag objects with { name: string } format", () => {
+    const json = JSON.stringify({
+      name: "User",
+      collections: [
+        {
+          id: 1,
+          name: "Col",
+          links: [
+            {
+              id: 1,
+              name: "Tagged",
+              url: "https://tagged.com",
+              tags: [{ name: "alpha" }, { name: "beta" }, { name: "gamma" }],
+            },
+          ],
+        },
+      ],
+    });
+
+    const result = parseJsonFlexible(json);
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].tags).toEqual(["alpha", "beta", "gamma"]);
+  });
+
+  test("handles tag objects with { name } in standard (non-Linkwarden) JSON", () => {
+    const json = JSON.stringify([
+      {
+        url: "https://example.com",
+        tags: [{ name: "foo" }, { name: "bar" }],
+      },
+    ]);
+
+    const result = parseJsonFlexible(json);
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].tags).toEqual(["foo", "bar"]);
+  });
+
+  test("finds link arrays nested deeply in JSON structure", () => {
+    const json = JSON.stringify({
+      result: {
+        payload: {
+          entries: [
+            { url: "https://deep-one.com", title: "Deep One" },
+            { url: "https://deep-two.com", title: "Deep Two" },
+          ],
+        },
+      },
+    });
+
+    const result = parseJsonFlexible(json);
+    expect(result.items).toHaveLength(2);
+    expect(result.items[0].url).toBe("https://deep-one.com");
+    expect(result.items[1].url).toBe("https://deep-two.com");
+  });
+
   test("preserves all optional fields", () => {
     const json = JSON.stringify([
       {
@@ -723,6 +896,35 @@ describe("smartImport", () => {
     const result = smartImport("No links here");
     expect(result.items).toHaveLength(0);
     expect(result.errors.length).toBeGreaterThan(0);
+  });
+
+  test("auto-detects Linkwarden backup JSON", () => {
+    const json = JSON.stringify({
+      name: "Jayden",
+      collections: [
+        {
+          id: 1,
+          name: "Tech",
+          links: [
+            {
+              id: 1,
+              name: "Bun",
+              url: "https://bun.sh",
+              tags: [{ name: "js" }],
+              createdAt: "2026-01-01T00:00:00.000Z",
+            },
+          ],
+        },
+      ],
+    });
+
+    const result = smartImport(json);
+    expect(result.detectedFormat).toBe("json");
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].url).toBe("https://bun.sh");
+    expect(result.items[0].title).toBe("Bun");
+    expect(result.items[0].tags).toEqual(["js"]);
+    expect(result.items[0].collection).toBe("Tech");
   });
 
   test("respects format hint when provided", () => {

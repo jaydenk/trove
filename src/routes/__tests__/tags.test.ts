@@ -311,6 +311,117 @@ describe("tags routes", () => {
     });
   });
 
+  describe("DELETE /api/tags/empty", () => {
+    test("deletes empty tags and returns count", async () => {
+      const app = createApp();
+
+      // Create tags — two empty, one with a link
+      db.query("INSERT INTO tags (id, user_id, name) VALUES (?, ?, ?)").run(
+        "tag-empty-1",
+        userId,
+        "empty-one"
+      );
+      db.query("INSERT INTO tags (id, user_id, name) VALUES (?, ?, ?)").run(
+        "tag-empty-2",
+        userId,
+        "empty-two"
+      );
+      db.query("INSERT INTO tags (id, user_id, name) VALUES (?, ?, ?)").run(
+        "tag-active",
+        userId,
+        "active"
+      );
+
+      // Get inbox for link
+      const inbox = db
+        .query<{ id: string }, [string, string]>(
+          "SELECT id FROM collections WHERE user_id = ? AND name = ?"
+        )
+        .get(userId, "inbox")!;
+
+      // Create a link and tag it
+      db.query(
+        `INSERT INTO links (id, user_id, url, title, domain, collection_id)
+         VALUES (?, ?, ?, ?, ?, ?)`
+      ).run("link-active", userId, "https://active.com", "Active", "active.com", inbox.id);
+      db.query("INSERT INTO link_tags (link_id, tag_id) VALUES (?, ?)").run(
+        "link-active",
+        "tag-active"
+      );
+
+      const res = await app.request("/api/tags/empty", {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.deleted).toBe(2);
+
+      // Verify only the active tag remains
+      const remaining = db
+        .query<{ id: string }, [string]>(
+          "SELECT id FROM tags WHERE user_id = ?"
+        )
+        .all(userId);
+      expect(remaining.length).toBe(1);
+      expect(remaining[0].id).toBe("tag-active");
+    });
+
+    test("returns 0 when no empty tags exist", async () => {
+      const app = createApp();
+
+      const res = await app.request("/api/tags/empty", {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.deleted).toBe(0);
+    });
+
+    test("does not delete other user's empty tags", async () => {
+      const app = createApp();
+
+      // Create an empty tag for the main user
+      db.query("INSERT INTO tags (id, user_id, name) VALUES (?, ?, ?)").run(
+        "my-empty",
+        userId,
+        "my-empty"
+      );
+
+      // Create another user with an empty tag
+      const otherToken = "other-token-empty";
+      const otherUser = createUser(db, {
+        name: "OtherUser",
+        apiToken: otherToken,
+      });
+      db.query("INSERT INTO tags (id, user_id, name) VALUES (?, ?, ?)").run(
+        "their-empty",
+        otherUser.id,
+        "their-empty"
+      );
+
+      const res = await app.request("/api/tags/empty", {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.deleted).toBe(1);
+
+      // Verify other user's tag still exists
+      const otherTag = db
+        .query<{ id: string }, [string]>(
+          "SELECT id FROM tags WHERE id = ?"
+        )
+        .get("their-empty");
+      expect(otherTag).not.toBeNull();
+    });
+  });
+
   describe("cross-user isolation", () => {
     test("cannot modify another user's tag", async () => {
       const app = createApp();

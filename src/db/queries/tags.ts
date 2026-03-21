@@ -88,6 +88,15 @@ export function removeTagFromLink(
   );
 }
 
+export function deleteEmptyTags(db: Database, userId: string): number {
+  const result = db.query(
+    `DELETE FROM tags
+     WHERE user_id = ?
+     AND id NOT IN (SELECT DISTINCT tag_id FROM link_tags)`
+  ).run(userId);
+  return result.changes;
+}
+
 export function getOrCreateTag(
   db: Database,
   userId: string,

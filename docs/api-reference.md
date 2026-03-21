@@ -235,6 +235,7 @@ All fields are optional. When `tags` is provided, it fully replaces the link's e
 | `POST` | `/api/tags` | Yes | Create tag (name required, unique per user) |
 | `PATCH` | `/api/tags/:id` | Yes | Rename tag |
 | `DELETE` | `/api/tags/:id` | Yes | Delete tag (removes from all linked items) |
+| `DELETE` | `/api/tags/empty` | Yes | Bulk-delete all tags with 0 links. Returns `{ deleted: number }` |
 
 ---
 

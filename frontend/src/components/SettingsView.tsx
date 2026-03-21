@@ -1,6 +1,7 @@
 import { useState } from "react";
 import AccountSettings from "./AccountSettings";
 import CollectionManager from "./CollectionManager";
+import TagManagement from "./TagManagement";
 import PluginSettings from "./PluginSettings";
 import ImportExportSettings from "./ImportExportSettings";
 import UserManagement from "./UserManagement";
@@ -25,7 +26,7 @@ interface SettingsViewProps {
   onSwipeRightChange: (action: SwipeAction) => void;
 }
 
-type SettingsTab = "account" | "appearance" | "collections" | "plugins" | "import-export" | "users";
+type SettingsTab = "account" | "appearance" | "collections" | "tags" | "plugins" | "import-export" | "users";
 
 export default function SettingsView({
   collections,
@@ -101,6 +102,13 @@ export default function SettingsView({
             className={`${tabBase} ${activeTab === "collections" ? tabActive : tabIdle}`}
           >
             Collections
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("tags")}
+            className={`${tabBase} ${activeTab === "tags" ? tabActive : tabIdle}`}
+          >
+            Tags
           </button>
           <button
             type="button"
@@ -187,6 +195,8 @@ export default function SettingsView({
           onClose={onClose}
           hideHeader
         />
+      ) : activeTab === "tags" ? (
+        <TagManagement />
       ) : activeTab === "plugins" ? (
         <PluginSettings
           onClose={onClose}

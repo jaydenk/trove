@@ -9,6 +9,7 @@ import {
   listTags,
   updateTag,
   deleteTag,
+  deleteEmptyTags,
   addTagToLink,
   removeTagFromLink,
   getOrCreateTag,
@@ -131,6 +132,53 @@ describe("tags", () => {
   test("unique name per user", () => {
     createTag(db, userId, "duplicate");
     expect(() => createTag(db, userId, "duplicate")).toThrow();
+  });
+
+  test("deleteEmptyTags removes only orphaned tags", () => {
+    const tagWithLink = createTag(db, userId, "has-link");
+    const tagEmpty1 = createTag(db, userId, "empty-1");
+    const tagEmpty2 = createTag(db, userId, "empty-2");
+
+    const link = createLink(db, userId, {
+      url: "https://example.com",
+      title: "Example",
+    });
+    addTagToLink(db, link.id, tagWithLink.id);
+
+    const deleted = deleteEmptyTags(db, userId);
+    expect(deleted).toBe(2);
+
+    const remaining = listTags(db, userId);
+    expect(remaining.length).toBe(1);
+    expect(remaining[0].name).toBe("has-link");
+  });
+
+  test("deleteEmptyTags returns 0 when no empty tags", () => {
+    const tag = createTag(db, userId, "active");
+    const link = createLink(db, userId, {
+      url: "https://example.com",
+      title: "Example",
+    });
+    addTagToLink(db, link.id, tag.id);
+
+    const deleted = deleteEmptyTags(db, userId);
+    expect(deleted).toBe(0);
+  });
+
+  test("deleteEmptyTags only affects current user", () => {
+    const user2 = createUser(db, { name: "Bob", apiToken: "token-2" });
+
+    // Create empty tags for both users
+    createTag(db, userId, "my-empty");
+    createTag(db, user2.id, "their-empty");
+
+    const deleted = deleteEmptyTags(db, userId);
+    expect(deleted).toBe(1);
+
+    // Other user's tag still exists
+    const otherTags = listTags(db, user2.id);
+    expect(otherTags.length).toBe(1);
+    expect(otherTags[0].name).toBe("their-empty");
   });
 
   test("different users can have same tag name", () => {

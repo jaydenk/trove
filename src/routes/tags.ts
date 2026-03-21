@@ -6,6 +6,7 @@ import {
   createTag,
   updateTag,
   deleteTag,
+  deleteEmptyTags,
 } from "../db/queries/tags";
 import { NotFoundError, ValidationError } from "../lib/errors";
 
@@ -87,6 +88,14 @@ tags.patch("/api/tags/:id", async (c) => {
     }
     throw err;
   }
+});
+
+tags.delete("/api/tags/empty", (c) => {
+  const db = getDb();
+  const user = c.get("user");
+  const deleted = deleteEmptyTags(db, user.id);
+
+  return c.json({ deleted });
 });
 
 tags.delete("/api/tags/:id", (c) => {

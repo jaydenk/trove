@@ -398,6 +398,9 @@ export const api = {
 
     delete: (id: string) =>
       request<void>(`/tags/${id}`, { method: "DELETE" }),
+
+    deleteEmpty: () =>
+      request<{ deleted: number }>("/tags/empty", { method: "DELETE" }),
   },
 
   admin: {

@@ -471,12 +471,17 @@ export default function AuthenticatedApp({
   const handleTriagePluginAction = useCallback(
     async (linkId: string, pluginId: string) => {
       const result = await api.plugins.executeAction(linkId, pluginId);
+      if (result.type === "error") {
+        throw new Error(result.message ?? "Plugin action failed");
+      }
       if (result.type === "redirect" && result.url) {
         window.open(result.url, "_blank", "noopener,noreferrer");
       }
-      refetchLinks();
+      // Archive the link so it leaves the inbox — the action history
+      // still records that it was sent to the plugin.
+      await api.links.archive(linkId);
     },
-    [refetchLinks],
+    [],
   );
 
   const handleTriageExit = useCallback(() => {

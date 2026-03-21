@@ -144,12 +144,10 @@ export default function TriageMode({
 
       // After action completes, the link list will be refreshed by the parent.
       // We keep currentIndex the same since the removed item shifts everything down.
-      // But if currentIndex is at the end, it will naturally point to the next-last item.
       setTimeout(() => {
         setExitingIndex(null);
         setProcessing(false);
         onRefresh();
-        // Don't change index — the link that was at currentIndex+1 is now at currentIndex
       }, 300);
     },
     [processing, currentLink, currentIndex, showFeedback, onRefresh],

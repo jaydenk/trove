@@ -7,6 +7,7 @@ export interface CollectionSidebarProps {
   selectedTag: string | null;
   onSelectTag: (tag: string | null) => void;
   onOpenSettings?: () => void;
+  onOpenHelp?: () => void;
   isSettingsActive?: boolean;
   userName?: string;
   onSignOut?: () => void;
@@ -18,6 +19,7 @@ export default function CollectionSidebar({
   selectedTag,
   onSelectTag,
   onOpenSettings,
+  onOpenHelp,
   isSettingsActive = false,
   userName,
   onSignOut,
@@ -164,15 +166,30 @@ export default function CollectionSidebar({
             <span className="text-xs text-muted dark:text-dark-muted truncate">
               {userName}
             </span>
-            {onSignOut && (
-              <button
-                type="button"
-                onClick={onSignOut}
-                className="text-xs text-muted dark:text-dark-muted hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
-              >
-                Sign out
-              </button>
-            )}
+            <div className="flex items-center gap-1.5">
+              {onOpenHelp && (
+                <button
+                  type="button"
+                  onClick={onOpenHelp}
+                  className="inline-flex items-center justify-center h-5 w-5 rounded text-muted dark:text-dark-muted hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-hover dark:hover:bg-dark-hover transition-colors"
+                  aria-label="Help"
+                  title="Help"
+                >
+                  <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.94 6.94a.75.75 0 11-1.06-1.06 3.5 3.5 0 015.024 4.87l-.868.678a1.25 1.25 0 00-.476.997V13a.75.75 0 01-1.5 0v-.652c0-.664.277-1.298.77-1.75l.868-.677A2 2 0 008.94 6.94zM10 17a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              )}
+              {onSignOut && (
+                <button
+                  type="button"
+                  onClick={onSignOut}
+                  className="text-xs text-muted dark:text-dark-muted hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
+                >
+                  Sign out
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -5,6 +5,7 @@ import { usePlugins } from "../hooks/usePlugins";
 import { api, connectSSE } from "../api";
 import CollectionSidebar from "./CollectionSidebar";
 import SettingsView from "./SettingsView";
+import type { SettingsTab } from "./SettingsView";
 import LinkCard from "./LinkCard";
 import type { SwipeAction } from "./LinkCard";
 import LinkDetail from "./LinkDetail";
@@ -54,6 +55,7 @@ export default function AuthenticatedApp({
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTab | undefined>(undefined);
 
   // Bulk selection (Task 5)
   const [selectedLinkIds, setSelectedLinkIds] = useState<Set<string>>(
@@ -695,7 +697,8 @@ export default function AuthenticatedApp({
           onSelectCollection={handleSelectCollection}
           selectedTag={selectedTag}
           onSelectTag={handleSelectTag}
-          onOpenSettings={() => setShowSettings(true)}
+          onOpenSettings={() => { setSettingsInitialTab(undefined); setShowSettings(true); }}
+          onOpenHelp={() => { setSettingsInitialTab("help"); setShowSettings(true); }}
           isSettingsActive={showSettings}
           userName={user.name}
           onSignOut={onLogout}
@@ -716,6 +719,12 @@ export default function AuthenticatedApp({
               selectedTag={selectedTag}
               onSelectTag={handleSelectTag}
               onOpenSettings={() => {
+                setSettingsInitialTab(undefined);
+                setShowSettings(true);
+                setIsMobileSidebarOpen(false);
+              }}
+              onOpenHelp={() => {
+                setSettingsInitialTab("help");
                 setShowSettings(true);
                 setIsMobileSidebarOpen(false);
               }}
@@ -738,6 +747,7 @@ export default function AuthenticatedApp({
             onToggleBulkMode={() => {}}
           />
           <SettingsView
+            key={settingsInitialTab ?? "default"}
             collections={collections}
             onRefreshCollections={refetchCollections}
             onRefreshLinks={refetchLinks}
@@ -751,6 +761,7 @@ export default function AuthenticatedApp({
             swipeRightAction={swipeRightAction}
             onSwipeLeftChange={setSwipeLeftAction}
             onSwipeRightChange={setSwipeRightAction}
+            initialTab={settingsInitialTab}
           />
         </div>
       ) : (

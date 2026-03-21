@@ -5,6 +5,7 @@ import TagManagement from "./TagManagement";
 import PluginSettings from "./PluginSettings";
 import ImportExportSettings from "./ImportExportSettings";
 import UserManagement from "./UserManagement";
+import HelpScreen from "./HelpScreen";
 import type { Collection, PluginInfo, User } from "../api";
 import type { SwipeAction } from "./LinkCard";
 
@@ -24,9 +25,10 @@ interface SettingsViewProps {
   swipeRightAction: SwipeAction;
   onSwipeLeftChange: (action: SwipeAction) => void;
   onSwipeRightChange: (action: SwipeAction) => void;
+  initialTab?: SettingsTab;
 }
 
-type SettingsTab = "account" | "appearance" | "collections" | "tags" | "plugins" | "import-export" | "users";
+export type SettingsTab = "account" | "appearance" | "collections" | "tags" | "plugins" | "import-export" | "users" | "help";
 
 export default function SettingsView({
   collections,
@@ -42,8 +44,9 @@ export default function SettingsView({
   swipeRightAction,
   onSwipeLeftChange,
   onSwipeRightChange,
+  initialTab,
 }: SettingsViewProps) {
-  const [activeTab, setActiveTab] = useState<SettingsTab>("appearance");
+  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab ?? "appearance");
 
   const tabBase =
     "px-4 py-2 text-sm font-medium transition-colors border-b-2 whitespace-nowrap shrink-0";
@@ -133,6 +136,13 @@ export default function SettingsView({
               Users
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => setActiveTab("help")}
+            className={`${tabBase} ${activeTab === "help" ? tabActive : tabIdle}`}
+          >
+            Help
+          </button>
         </div>
       </div>
 
@@ -205,6 +215,8 @@ export default function SettingsView({
         />
       ) : activeTab === "users" ? (
         <UserManagement currentUser={user} />
+      ) : activeTab === "help" ? (
+        <HelpScreen />
       ) : (
         <ImportExportSettings
           onImportComplete={() => {

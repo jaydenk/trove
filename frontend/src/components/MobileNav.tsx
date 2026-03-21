@@ -6,6 +6,8 @@ export interface MobileNavProps {
   onSearchChange?: (value: string) => void;
   bulkModeActive: boolean;
   onToggleBulkMode: () => void;
+  showTriageButton?: boolean;
+  onToggleTriage?: () => void;
 }
 
 export default function MobileNav({
@@ -16,6 +18,8 @@ export default function MobileNav({
   onSearchChange,
   bulkModeActive,
   onToggleBulkMode,
+  showTriageButton,
+  onToggleTriage,
 }: MobileNavProps) {
   return (
     <header className="flex lg:hidden flex-col border-b border-border dark:border-dark-border shrink-0">
@@ -46,6 +50,20 @@ export default function MobileNav({
         </span>
 
         <div className="flex items-center gap-1 -mr-1.5">
+          {/* Triage button — 44px touch target */}
+          {showTriageButton && onToggleTriage && (
+            <button
+              type="button"
+              onClick={onToggleTriage}
+              className="inline-flex items-center justify-center h-11 w-11 rounded-md text-neutral-600 dark:text-neutral-400 hover:bg-hover dark:hover:bg-dark-hover transition-colors"
+              aria-label="Triage mode"
+            >
+              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M11.983 1.907a.75.75 0 00-1.292-.657l-8.5 9.5A.75.75 0 002.75 12h6.572l-1.305 6.093a.75.75 0 001.292.657l8.5-9.5A.75.75 0 0017.25 8h-6.572l1.305-6.093z" />
+              </svg>
+            </button>
+          )}
+
           {/* Select / Cancel button — 44px touch target */}
           <button
             type="button"

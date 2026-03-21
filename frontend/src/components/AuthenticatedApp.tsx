@@ -13,6 +13,7 @@ import AddLinkModal from "./AddLinkModal";
 import BulkActionBar from "./BulkActionBar";
 import MobileNav from "./MobileNav";
 import ContextMenu from "./ContextMenu";
+import TriageMode from "./TriageMode";
 import type { User, Link, PluginInfo } from "../api";
 
 /**
@@ -59,6 +60,9 @@ export default function AuthenticatedApp({
     new Set(),
   );
   const [bulkModeActive, setBulkModeActive] = useState(false);
+
+  // Triage mode
+  const [triageMode, setTriageMode] = useState(false);
 
   // Keyboard navigation (Task 6)
   const [focusedLinkIndex, setFocusedLinkIndex] = useState<number>(-1);
@@ -193,6 +197,7 @@ export default function AuthenticatedApp({
     setBulkModeActive(false);
     setFocusedLinkIndex(-1);
     setIsMobileSidebarOpen(false);
+    setTriageMode(false);
   };
 
   const handleSelectTag = (tag: string | null) => {
@@ -205,6 +210,7 @@ export default function AuthenticatedApp({
     setBulkModeActive(false);
     setFocusedLinkIndex(-1);
     setIsMobileSidebarOpen(false);
+    setTriageMode(false);
   };
 
   const isSearching = searchQuery.trim().length > 0;
@@ -438,6 +444,44 @@ export default function AuthenticatedApp({
   }, []);
 
   // -----------------------------------------------------------------------
+  // Triage mode handlers
+  // -----------------------------------------------------------------------
+
+  const handleTriageArchive = useCallback(
+    async (id: string) => {
+      await api.links.archive(id);
+      refetchLinks();
+      refetchCollections();
+    },
+    [refetchLinks, refetchCollections],
+  );
+
+  const handleTriageDelete = useCallback(
+    async (id: string) => {
+      await api.links.delete(id);
+      if (selectedLinkId === id) setSelectedLinkId(null);
+      refetchLinks();
+      refetchCollections();
+    },
+    [selectedLinkId, refetchLinks, refetchCollections],
+  );
+
+  const handleTriagePluginAction = useCallback(
+    async (linkId: string, pluginId: string) => {
+      const result = await api.plugins.executeAction(linkId, pluginId);
+      if (result.type === "redirect" && result.url) {
+        window.open(result.url, "_blank", "noopener,noreferrer");
+      }
+      refetchLinks();
+    },
+    [refetchLinks],
+  );
+
+  const handleTriageExit = useCallback(() => {
+    setTriageMode(false);
+  }, []);
+
+  // -----------------------------------------------------------------------
   // Executable plugins list (for keyboard shortcuts + hints)
   // -----------------------------------------------------------------------
 
@@ -454,12 +498,21 @@ export default function AuthenticatedApp({
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
 
+      // Triage mode has its own keyboard handler — only handle 't' to toggle off
+      if (triageMode) return;
+
       const focusedLink =
         focusedLinkIndex >= 0 && focusedLinkIndex < links.length
           ? links[focusedLinkIndex]
           : null;
 
       switch (e.key) {
+        case "t":
+          if (!showSettings && links.length > 0) {
+            e.preventDefault();
+            setTriageMode(true);
+          }
+          break;
         case "/":
           e.preventDefault();
           searchRef.current?.focus();
@@ -591,6 +644,8 @@ export default function AuthenticatedApp({
     showFeedback,
     refetchLinks,
     refetchCollections,
+    triageMode,
+    showSettings,
   ]);
 
   // Reset focused index when links change
@@ -704,9 +759,9 @@ export default function AuthenticatedApp({
           <MobileNav
             onToggleSidebar={() => setIsMobileSidebarOpen((v) => !v)}
             onOpenAddModal={() => setIsAddModalOpen(true)}
-            currentView={currentViewName}
+            currentView={triageMode ? "Triage" : currentViewName}
             searchQuery={searchQuery}
-            onSearchChange={(v) => {
+            onSearchChange={triageMode ? undefined : (v) => {
               setSearchQuery(v);
               setPage(1);
               setSelectedLinkId(null);
@@ -720,6 +775,8 @@ export default function AuthenticatedApp({
                 setBulkModeActive(true);
               }
             }}
+            showTriageButton={!triageMode && links.length > 0}
+            onToggleTriage={() => setTriageMode(true)}
           />
 
           {/* Desktop header */}
@@ -734,6 +791,21 @@ export default function AuthenticatedApp({
               }}
             />
             <div className="flex items-center gap-2">
+              {/* Triage button */}
+              {links.length > 0 && !triageMode && (
+                <button
+                  type="button"
+                  onClick={() => setTriageMode(true)}
+                  className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium border border-border dark:border-dark-border text-neutral-600 dark:text-neutral-400 hover:bg-hover dark:hover:bg-dark-hover transition-colors"
+                  title="Triage mode (T)"
+                >
+                  {/* Lightning bolt icon */}
+                  <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M11.983 1.907a.75.75 0 00-1.292-.657l-8.5 9.5A.75.75 0 002.75 12h6.572l-1.305 6.093a.75.75 0 001.292.657l8.5-9.5A.75.75 0 0017.25 8h-6.572l1.305-6.093z" />
+                  </svg>
+                  Triage
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => {
@@ -773,124 +845,139 @@ export default function AuthenticatedApp({
             </div>
           </header>
 
-          <main className="flex-1 overflow-y-auto">
-            {linksLoading ? (
-              <div className="flex items-center justify-center py-20">
-                <svg
-                  className="animate-spin h-5 w-5 text-muted dark:text-dark-muted"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                  />
-                </svg>
-              </div>
-            ) : links.length === 0 ? (
-              <div className="flex items-center justify-center py-20">
-                <p className="text-sm text-muted dark:text-dark-muted">
-                  No links found
-                </p>
-              </div>
-            ) : (
-              <div className="flex flex-col">
-                {links.map((link, index) => (
-                  <div key={link.id}>
-                    <LinkCard
-                      link={link}
-                      isSelected={link.id === selectedLinkId}
-                      isFocused={index === focusedLinkIndex}
-                      onClick={() => setSelectedLinkId(link.id)}
-                      plugins={plugins}
-                      isSelectable={isBulkMode}
-                      isChecked={selectedLinkIds.has(link.id)}
-                      onToggleSelect={() => toggleLinkSelection(link.id)}
-                      onLongPress={() => handleLongPress(link.id)}
-                      onContextMenu={handleContextMenu}
-                      onArchive={handleContextArchive}
-                      onDelete={handleContextDelete}
-                      onPluginAction={handleContextPluginAction}
-                      swipeLeftAction={swipeLeftAction}
-                      swipeRightAction={swipeRightAction}
-                      onSwipeAction={handleSwipeAction}
-                    />
-                    {/* FTS snippets use dangerouslySetInnerHTML because SQLite
-                        snippet() returns <b> tags for match highlighting.
-                        sanitiseSnippet() escapes all HTML except <b>/<\/b>. */}
-                    {isSearching && link.snippet && (
-                      <div className="px-4 pb-2 -mt-px border-b border-border dark:border-dark-border">
-                        <p
-                          className="pl-6 text-xs text-muted dark:text-dark-muted line-clamp-2 [&>b]:font-semibold [&>b]:text-neutral-700 dark:[&>b]:text-neutral-300"
-                          dangerouslySetInnerHTML={{
-                            __html: sanitiseSnippet(link.snippet),
-                          }}
-                        />
-                      </div>
-                    )}
+          {triageMode ? (
+            <TriageMode
+              links={links}
+              plugins={plugins}
+              collections={collections}
+              onArchive={handleTriageArchive}
+              onDelete={handleTriageDelete}
+              onPluginAction={handleTriagePluginAction}
+              onExit={handleTriageExit}
+              onRefresh={refetchLinks}
+            />
+          ) : (
+            <>
+              <main className="flex-1 overflow-y-auto">
+                {linksLoading ? (
+                  <div className="flex items-center justify-center py-20">
+                    <svg
+                      className="animate-spin h-5 w-5 text-muted dark:text-dark-muted"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                      />
+                    </svg>
                   </div>
-                ))}
-              </div>
-            )}
-          </main>
+                ) : links.length === 0 ? (
+                  <div className="flex items-center justify-center py-20">
+                    <p className="text-sm text-muted dark:text-dark-muted">
+                      No links found
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col">
+                    {links.map((link, index) => (
+                      <div key={link.id}>
+                        <LinkCard
+                          link={link}
+                          isSelected={link.id === selectedLinkId}
+                          isFocused={index === focusedLinkIndex}
+                          onClick={() => setSelectedLinkId(link.id)}
+                          plugins={plugins}
+                          isSelectable={isBulkMode}
+                          isChecked={selectedLinkIds.has(link.id)}
+                          onToggleSelect={() => toggleLinkSelection(link.id)}
+                          onLongPress={() => handleLongPress(link.id)}
+                          onContextMenu={handleContextMenu}
+                          onArchive={handleContextArchive}
+                          onDelete={handleContextDelete}
+                          onPluginAction={handleContextPluginAction}
+                          swipeLeftAction={swipeLeftAction}
+                          swipeRightAction={swipeRightAction}
+                          onSwipeAction={handleSwipeAction}
+                        />
+                        {/* FTS snippets use dangerouslySetInnerHTML because SQLite
+                            snippet() returns <b> tags for match highlighting.
+                            sanitiseSnippet() escapes all HTML except <b>/<\/b>. */}
+                        {isSearching && link.snippet && (
+                          <div className="px-4 pb-2 -mt-px border-b border-border dark:border-dark-border">
+                            <p
+                              className="pl-6 text-xs text-muted dark:text-dark-muted line-clamp-2 [&>b]:font-semibold [&>b]:text-neutral-700 dark:[&>b]:text-neutral-300"
+                              dangerouslySetInnerHTML={{
+                                __html: sanitiseSnippet(link.snippet),
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </main>
 
-          {pagination && pagination.totalPages > 1 && (
-            <div className="border-t border-border dark:border-dark-border px-6 py-3 flex items-center justify-between shrink-0">
-              <button
-                type="button"
-                disabled={pagination.page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="text-sm px-3 py-1.5 rounded-md border border-border dark:border-dark-border text-neutral-700 dark:text-neutral-300 hover:bg-hover dark:hover:bg-dark-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                Previous
-              </button>
-              <span className="text-xs text-muted dark:text-dark-muted tabular-nums">
-                Page {pagination.page} of {pagination.totalPages}
-              </span>
-              <button
-                type="button"
-                disabled={pagination.page >= pagination.totalPages}
-                onClick={() =>
-                  setPage((p) => Math.min(pagination.totalPages, p + 1))
-                }
-                className="text-sm px-3 py-1.5 rounded-md border border-border dark:border-dark-border text-neutral-700 dark:text-neutral-300 hover:bg-hover dark:hover:bg-dark-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                Next
-              </button>
-            </div>
-          )}
+              {pagination && pagination.totalPages > 1 && (
+                <div className="border-t border-border dark:border-dark-border px-6 py-3 flex items-center justify-between shrink-0">
+                  <button
+                    type="button"
+                    disabled={pagination.page <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    className="text-sm px-3 py-1.5 rounded-md border border-border dark:border-dark-border text-neutral-700 dark:text-neutral-300 hover:bg-hover dark:hover:bg-dark-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-xs text-muted dark:text-dark-muted tabular-nums">
+                    Page {pagination.page} of {pagination.totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={pagination.page >= pagination.totalPages}
+                    onClick={() =>
+                      setPage((p) => Math.min(pagination.totalPages, p + 1))
+                    }
+                    className="text-sm px-3 py-1.5 rounded-md border border-border dark:border-dark-border text-neutral-700 dark:text-neutral-300 hover:bg-hover dark:hover:bg-dark-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
 
-          {/* Keyboard shortcut hints when a link is focused */}
-          {focusedLinkIndex >= 0 && focusedLinkIndex < links.length && (
-            <div className="hidden lg:flex border-t border-border dark:border-dark-border px-4 py-2 items-center gap-3 text-[11px] text-muted dark:text-dark-muted shrink-0 flex-wrap">
-              <span>
-                <kbd className="px-1 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 font-mono text-[10px]">a</kbd>{" "}
-                {links[focusedLinkIndex].status === "archived"
-                  ? "Unarchive"
-                  : "Archive"}
-              </span>
-              <span>
-                <kbd className="px-1 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 font-mono text-[10px]">d</kbd>{" "}
-                Delete
-              </span>
-              {executablePlugins.map((p, i) => (
-                <span key={p.id}>
-                  <kbd className="px-1 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 font-mono text-[10px]">
-                    {i + 1}
-                  </kbd>{" "}
-                  {p.actionLabel ?? p.name}
-                </span>
-              ))}
-            </div>
+              {/* Keyboard shortcut hints when a link is focused */}
+              {focusedLinkIndex >= 0 && focusedLinkIndex < links.length && (
+                <div className="hidden lg:flex border-t border-border dark:border-dark-border px-4 py-2 items-center gap-3 text-[11px] text-muted dark:text-dark-muted shrink-0 flex-wrap">
+                  <span>
+                    <kbd className="px-1 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 font-mono text-[10px]">a</kbd>{" "}
+                    {links[focusedLinkIndex].status === "archived"
+                      ? "Unarchive"
+                      : "Archive"}
+                  </span>
+                  <span>
+                    <kbd className="px-1 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 font-mono text-[10px]">d</kbd>{" "}
+                    Delete
+                  </span>
+                  {executablePlugins.map((p, i) => (
+                    <span key={p.id}>
+                      <kbd className="px-1 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 font-mono text-[10px]">
+                        {i + 1}
+                      </kbd>{" "}
+                      {p.actionLabel ?? p.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

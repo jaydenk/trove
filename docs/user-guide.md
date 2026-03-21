@@ -95,6 +95,7 @@ The following shortcuts are available when no input field is focused:
 | `a` | Archive (or unarchive) the focused link |
 | `d` | Delete the focused link (with confirmation) |
 | `1`–`9` | Send the focused link to the corresponding plugin |
+| `t` | Toggle triage mode |
 | `Cmd+K` | Focus the search bar |
 
 When a link is focused, a hint bar appears at the bottom of the link list showing available plugin shortcuts (e.g. "1 Send to Things", "2 Send to Reader"). A brief feedback toast confirms the action.
@@ -115,6 +116,47 @@ Once in bulk mode, all link cards display checkboxes. The floating action bar at
 - **Delete** — delete all selected links (with confirmation)
 
 Click **Cancel** in the header/nav or press `Escape` to exit bulk mode and clear the selection.
+
+## Triage Mode
+
+Triage mode is a focused flow for rapidly processing links one at a time — like flipping through a card deck. It is ideal for clearing your inbox after links accumulate.
+
+### Entering Triage Mode
+
+- **Desktop:** Click the **Triage** button (lightning bolt icon) in the header, next to Select and Add
+- **Mobile:** Tap the lightning bolt icon in the navigation bar
+- **Keyboard:** Press `T` when not in an input field
+
+Triage mode is only available when the current view contains links.
+
+### How It Works
+
+When triage mode is active, the normal link list is replaced with a focused single-card view:
+
+1. The first link is displayed as a large, prominent card showing the title, URL, domain, description excerpt, tags, collection, and extraction status
+2. An action bar at the bottom shows all available actions with their keyboard shortcuts
+3. Press a key or tap a button to perform an action on the current link
+4. The link animates out and the next link automatically appears
+5. A progress indicator shows how many links remain
+
+### Keyboard Shortcuts (Triage Mode)
+
+| Key | Action |
+| --- | --- |
+| `1`–`9` | Send to the corresponding configured export plugin |
+| `A` | Archive the current link |
+| `D` | Delete the current link |
+| `S` or `→` | Skip — move to next link without taking action |
+| `K` or `←` | Go back to the previous link |
+| `Escape` | Exit triage mode |
+
+### Mobile Usage
+
+On mobile, all actions are presented as buttons below the focused card. The plugin buttons, archive, delete, and skip actions are all accessible via touch.
+
+### Completion
+
+When all links have been processed, a completion screen is displayed with an option to exit triage mode. Triage mode also exits automatically when you change collections, tags, or navigate elsewhere.
 
 ## Import and Export
 

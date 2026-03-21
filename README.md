@@ -14,18 +14,21 @@ Trove is a self-hosted link inbox for people who save links from many sources an
 
 ## Features
 
-- **Save from anywhere** — browser extension (Chrome + Safari), iOS Shortcut, bookmarklet, API, webhooks
+- **Save from anywhere** — browser extension (Chrome + Safari), iOS share extension, bookmarklet, API, webhooks
+- **Triage mode** — focused card-by-card flow for rapid inbox processing with keyboard shortcuts (`T` to enter, `1`-`9` for plugins, `A` archive, `D` delete, `S` skip)
 - **Route links outward** — declarative plugin system sends links to Reader, Things, Notion, or any HTTP API
 - **Ingest links inward** — receive from n8n, RSS, Zapier, or any automation tool via webhooks
-- **Collections and tags** for organising your link inbox
-- **Full-text search** powered by SQLite FTS5 with prefix matching and highlighted snippets
-- **Automatic content extraction** — browser extension captures rendered pages; server fallback for API saves
-- **MCP server** for Claude integration — search, browse, and save links via 7 tools
-- **Smart import/export** — auto-detects HTML bookmarks, JSON (any structure with nested collections), CSV/TSV, or plain text with URLs; preview and select items before importing; flexible field matching for any format
-- **Multi-user** with username/password auth, admin management, and API tokens
-- **Triage mode** — focused flow for rapid inbox processing: press `T` or click the lightning bolt, then use keyboard shortcuts (`1`-`9` for plugins, `A` archive, `D` delete, `S` skip) to fly through links one at a time
-- **Bulk selection** — Select button in header/nav, long-press on mobile, Select All/Deselect All, plus keyboard shortcut (`x`)
-- **Customisable swipe actions** on mobile — swipe left/right to archive, delete, or trigger any plugin
+- **Collections and tags** — organise your link inbox with collections (inbox default, archive virtual entry) and tags (hidden when empty, sidebar filtering)
+- **Full-text search** — SQLite FTS5 with prefix matching and highlighted snippets
+- **Bulk actions** — Select button, long-press on mobile, Select All, keyboard shortcut (`x`), move/archive/delete
+- **Customisable swipe actions** — swipe left/right on mobile to archive, delete, or trigger any plugin
+- **Right-click context menu** — archive, delete, send to plugin, or copy URL on desktop
+- **Automatic content extraction** — browser extension captures rendered DOM; server fallback for API saves
+- **Smart import/export** — auto-detects HTML bookmarks, JSON (any structure), CSV/TSV, or plain text; preview and select items before importing; include/exclude tags
+- **Dark mode** — light, dark, or system theme in Appearance settings
+- **MCP server** — Claude integration via 7 tools for search, browse, and save
+- **Multi-user** — username/password auth, admin management, API tokens
+- **Keyboard shortcuts** — full navigation, actions, and triage mode from the keyboard
 - **Single-container Docker deployment** with CI/CD to GHCR
 
 ## Quick Start
@@ -60,7 +63,7 @@ bun run dev:frontend     # Frontend (port 5173, proxies to backend)
 Full documentation is available in the [`docs/`](docs/) directory:
 
 - [Getting Started](docs/getting-started.md) — installation, first login, initial setup
-- [User Guide](docs/user-guide.md) — saving links, collections, tags, search, keyboard shortcuts
+- [User Guide](docs/user-guide.md) — saving links, collections, tags, search, triage mode, keyboard shortcuts
 - [Plugin Development](docs/plugin-development.md) — creating custom JSON plugin manifests
 - [API Reference](docs/api-reference.md) — all endpoints, authentication, request/response formats
 - [MCP Server](docs/mcp-server.md) — Claude integration setup and available tools

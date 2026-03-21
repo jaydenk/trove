@@ -5,8 +5,8 @@
 The simplest way to run Trove in production:
 
 ```bash
-git clone https://github.com/jaydenk/TroveLinkManager.git
-cd TroveLinkManager
+git clone https://github.com/jaydenk/trove.git
+cd trove
 cp env.example .env
 # Edit .env — set TROVE_ADMIN_PASSWORD
 docker compose up -d

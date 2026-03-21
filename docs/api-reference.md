@@ -12,7 +12,7 @@ To obtain a token:
 
 1. **Login** — `POST /api/auth/login` with username and password, which returns a token
 2. **Seed** — the `bun run seed` command prints the admin user's token
-3. **Settings** — view or regenerate your token from the Settings page in the web UI
+3. **Settings** — view or regenerate your token from **Settings > Account** in the web UI
 
 ## Error Format
 
@@ -88,6 +88,12 @@ Rate limited to 10 attempts per minute per IP.
 | --- | --- | --- | --- |
 | `GET` | `/health` | No | Returns status and link count |
 
+Response:
+
+```json
+{ "status": "ok", "links": 42 }
+```
+
 ---
 
 ### SSE Events
@@ -121,6 +127,19 @@ Each event includes `{ linkId, timestamp }` as JSON data. A heartbeat is sent ev
 | `GET` | `/api/me/preferences` | Yes | Get all user preferences |
 | `PATCH` | `/api/me/preferences` | Yes | Upsert user preferences |
 
+#### PATCH /api/me
+
+```json
+{
+  "name": "New Name",
+  "email": "new@example.com",
+  "username": "newusername",
+  "password": "newpassword"
+}
+```
+
+All fields are optional. Returns the updated user object.
+
 #### GET /api/me/preferences
 
 Returns all preferences for the authenticated user as a flat `Record<string, string>`:
@@ -153,6 +172,19 @@ Requires admin role.
 | `POST` | `/api/admin/users` | Admin | Create user (returns token once) |
 | `DELETE` | `/api/admin/users/:id` | Admin | Delete user and all related data |
 
+#### POST /api/admin/users
+
+```json
+{
+  "name": "Jane Doe",
+  "username": "jane",
+  "password": "securepassword",
+  "email": "jane@example.com"
+}
+```
+
+`email` is optional. Returns the created user object including `apiToken` (shown only once).
+
 ---
 
 ### Links
@@ -177,7 +209,7 @@ Requires admin role.
 | `tag` | — | Filter by tag name |
 | `domain` | — | Filter by domain |
 | `status` | — | Filter by status (`saved`, `archived`) |
-| `source` | — | Filter by source (`manual`, `mcp`, `plugin:*`, etc.) |
+| `source` | — | Filter by source (`manual`, `mcp`, `import`, `plugin:*`, etc.) |
 | `page` | `1` | Page number |
 | `limit` | `50` | Results per page (max 200) |
 
@@ -213,6 +245,20 @@ When `content` is provided, server-side extraction is skipped — this is used b
 ```
 
 All fields are optional. When `tags` is provided, it fully replaces the link's existing tags.
+
+#### POST /api/links/:id/actions/:pluginId
+
+Executes the plugin's action on the link and records the result. Returns:
+
+```json
+{ "type": "success", "message": "Sent successfully" }
+```
+
+Or for URL-redirect plugins:
+
+```json
+{ "type": "redirect", "url": "things:///add?title=..." }
+```
 
 ---
 
@@ -258,30 +304,68 @@ All fields are optional. When `tags` is provided, it fully replaces the link's e
 
 **POST /api/plugins/:id/webhook** — accepts the plugin-specific ingest payload. Returns `{ created, skipped, errors }`.
 
-**POST /api/links/:id/actions/:pluginId** — executes the plugin's action on the link and records the result. Returns `{ type: "success"|"redirect"|"error", message|url }`.
-
 ---
 
 ### Import / Export
 
 | Method | Path | Auth | Description |
 | --- | --- | --- | --- |
-| `POST` | `/api/import` | Yes | Import links — auto-detects HTML bookmarks, JSON, CSV/TSV, or plain text |
+| `POST` | `/api/import/preview` | Yes | Parse file and return detected items for review before importing |
+| `POST` | `/api/import` | Yes | Import links — from raw data (auto-detect) or pre-parsed items from preview |
 | `GET` | `/api/export/json` | Yes | Export all links as JSON |
 | `GET` | `/api/export/csv` | Yes | Export all links as CSV |
 | `GET` | `/api/export/html` | Yes | Export all links as HTML bookmarks |
 
-#### POST /api/import — Request Body
+#### POST /api/import/preview — Request Body
 
 ```json
 {
-  "data": "<!DOCTYPE NETSCAPE-Bookmark-file-1>..."
+  "data": "<!DOCTYPE NETSCAPE-Bookmark-file-1>...",
+  "format": "html"
 }
 ```
 
-`data` is the file contents as a string. The format is auto-detected from the content. Supported formats: HTML bookmarks, JSON (arrays or objects with `links`/`data`/`bookmarks`/`items` wrappers), CSV/TSV (with flexible column name matching), and plain text (URLs are extracted automatically).
+`data` is the file contents as a string. `format` is optional — if omitted, the format is auto-detected. Returns:
 
-An optional `format` field (`"html"`, `"json"`, `"csv"`, or `"text"`) can be provided as a hint to skip auto-detection.
+```json
+{
+  "detectedFormat": "html",
+  "items": [
+    {
+      "url": "https://example.com",
+      "title": "Example",
+      "tags": ["bookmark"],
+      "collection": "Reading"
+    }
+  ],
+  "errors": []
+}
+```
+
+#### POST /api/import — Request Body
+
+Accepts two payload shapes:
+
+**Pre-parsed items** (from the preview flow):
+
+```json
+{
+  "items": [
+    { "url": "https://example.com", "title": "Example", "tags": ["bookmark"], "collection": "Reading" }
+  ]
+}
+```
+
+**Raw data** (auto-detected):
+
+```json
+{
+  "data": "<!DOCTYPE NETSCAPE-Bookmark-file-1>...",
+  "format": "html"
+}
+```
+
+`format` is optional (auto-detected from content). Supported formats: HTML bookmarks, JSON (arrays or objects with `links`/`data`/`bookmarks`/`items` wrappers), CSV/TSV (with flexible column name matching), and plain text (URLs are extracted automatically).
 
 JSON and CSV parsers use fuzzy field matching — they recognise common field name variations (e.g. `href`/`link`/`uri` for URL, `name`/`label` for title, `labels`/`categories`/`keywords` for tags).
 

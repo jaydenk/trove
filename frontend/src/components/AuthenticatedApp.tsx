@@ -86,34 +86,55 @@ export default function AuthenticatedApp({
   const feedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // -----------------------------------------------------------------------
-  // Theme preference (Fix 1: dark/light/system toggle)
+  // User preferences (synced via API)
   // -----------------------------------------------------------------------
 
-  const [theme, setTheme] = useState<"light" | "dark" | "system">(() => {
-    const stored = localStorage.getItem("trove_theme");
-    if (stored === "light" || stored === "dark") return stored;
-    return "system";
-  });
+  const [theme, setThemeState] = useState<"light" | "dark" | "system">("system");
+  const [swipeLeftAction, setSwipeLeftState] = useState<SwipeAction>("delete");
+  const [swipeRightAction, setSwipeRightState] = useState<SwipeAction>("archive");
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
 
-  // -----------------------------------------------------------------------
-  // Swipe action preferences
-  // -----------------------------------------------------------------------
-
-  const [swipeLeftAction, setSwipeLeftAction] = useState<SwipeAction>(() => {
-    return (localStorage.getItem("trove_swipe_left") as SwipeAction) || "delete";
-  });
-  const [swipeRightAction, setSwipeRightAction] = useState<SwipeAction>(() => {
-    return (localStorage.getItem("trove_swipe_right") as SwipeAction) || "archive";
-  });
-
+  // Load preferences from the server on mount
   useEffect(() => {
-    localStorage.setItem("trove_swipe_left", swipeLeftAction);
-  }, [swipeLeftAction]);
+    api.preferences.get().then((prefs) => {
+      const t = prefs.theme;
+      if (t === "light" || t === "dark" || t === "system") {
+        setThemeState(t);
+      }
+      if (prefs.swipe_left) {
+        setSwipeLeftState(prefs.swipe_left as SwipeAction);
+      }
+      if (prefs.swipe_right) {
+        setSwipeRightState(prefs.swipe_right as SwipeAction);
+      }
+      setPrefsLoaded(true);
 
-  useEffect(() => {
-    localStorage.setItem("trove_swipe_right", swipeRightAction);
-  }, [swipeRightAction]);
+      // Clean up legacy localStorage values
+      localStorage.removeItem("trove_theme");
+      localStorage.removeItem("trove_swipe_left");
+      localStorage.removeItem("trove_swipe_right");
+    }).catch(() => {
+      // If the API call fails, keep defaults and proceed
+      setPrefsLoaded(true);
+    });
+  }, []);
 
+  const setTheme = useCallback((value: "light" | "dark" | "system") => {
+    setThemeState(value);
+    api.preferences.set({ theme: value }).catch(() => {});
+  }, []);
+
+  const setSwipeLeftAction = useCallback((value: SwipeAction) => {
+    setSwipeLeftState(value);
+    api.preferences.set({ swipe_left: value }).catch(() => {});
+  }, []);
+
+  const setSwipeRightAction = useCallback((value: SwipeAction) => {
+    setSwipeRightState(value);
+    api.preferences.set({ swipe_right: value }).catch(() => {});
+  }, []);
+
+  // Apply theme to the document
   useEffect(() => {
     function applyTheme(pref: "light" | "dark" | "system") {
       const html = document.documentElement;
@@ -132,7 +153,6 @@ export default function AuthenticatedApp({
     }
 
     applyTheme(theme);
-    localStorage.setItem("trove_theme", theme);
 
     // Listen for system changes when in "system" mode
     if (theme === "system") {

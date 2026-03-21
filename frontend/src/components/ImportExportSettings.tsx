@@ -105,6 +105,9 @@ export default function ImportExportSettings({
   const [detectedFormat, setDetectedFormat] = useState<string | null>(null);
   const [previewErrors, setPreviewErrors] = useState<string[]>([]);
 
+  // Import options
+  const [includeTags, setIncludeTags] = useState(true);
+
   // Export state
   const [exportingFormat, setExportingFormat] = useState<string | null>(null);
 
@@ -183,9 +186,9 @@ export default function ImportExportSettings({
     setImportResult(null);
     setImportProgress(null);
 
-    const itemsToImport = previewItems.filter((_, i) =>
-      selectedIndices.has(i),
-    );
+    const itemsToImport = previewItems
+      .filter((_, i) => selectedIndices.has(i))
+      .map((item) => includeTags ? item : { ...item, tags: undefined });
     const batchSize = 5;
     const total = itemsToImport.length;
     let imported = 0;
@@ -469,6 +472,19 @@ export default function ImportExportSettings({
                       </div>
                     )}
                   </div>
+                )}
+
+                {/* Import options */}
+                {!importProgress && (
+                  <label className="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300 cursor-pointer select-none mb-2">
+                    <input
+                      type="checkbox"
+                      checked={includeTags}
+                      onChange={(e) => setIncludeTags(e.target.checked)}
+                      className="rounded border-border dark:border-dark-border"
+                    />
+                    Include tags
+                  </label>
                 )}
 
                 {/* Action buttons */}

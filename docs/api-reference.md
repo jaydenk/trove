@@ -265,7 +265,7 @@ All fields are optional. When `tags` is provided, it fully replaces the link's e
 
 | Method | Path | Auth | Description |
 | --- | --- | --- | --- |
-| `POST` | `/api/import` | Yes | Import links from HTML, CSV, or JSON data |
+| `POST` | `/api/import` | Yes | Import links — auto-detects HTML bookmarks, JSON, CSV/TSV, or plain text |
 | `GET` | `/api/export/json` | Yes | Export all links as JSON |
 | `GET` | `/api/export/csv` | Yes | Export all links as CSV |
 | `GET` | `/api/export/html` | Yes | Export all links as HTML bookmarks |
@@ -274,17 +274,20 @@ All fields are optional. When `tags` is provided, it fully replaces the link's e
 
 ```json
 {
-  "format": "html",
   "data": "<!DOCTYPE NETSCAPE-Bookmark-file-1>..."
 }
 ```
 
-`format` must be `"html"`, `"csv"`, or `"json"`. `data` is the file contents as a string.
+`data` is the file contents as a string. The format is auto-detected from the content. Supported formats: HTML bookmarks, JSON (arrays or objects with `links`/`data`/`bookmarks`/`items` wrappers), CSV/TSV (with flexible column name matching), and plain text (URLs are extracted automatically).
+
+An optional `format` field (`"html"`, `"json"`, `"csv"`, or `"text"`) can be provided as a hint to skip auto-detection.
+
+JSON and CSV parsers use fuzzy field matching — they recognise common field name variations (e.g. `href`/`link`/`uri` for URL, `name`/`label` for title, `labels`/`categories`/`keywords` for tags).
 
 Response:
 
 ```json
-{ "imported": 15, "skipped": 2, "errors": [] }
+{ "imported": 15, "skipped": 2, "errors": [], "detectedFormat": "html" }
 ```
 
 #### Export Endpoints

@@ -1,6 +1,6 @@
 import { describe, test, expect } from "bun:test";
 import { exportJson, exportCsv, exportHtml, type ExportLink } from "../exporter";
-import { parseHtmlBookmarks, parseJson } from "../importer";
+import { parseHtmlBookmarks, parseJsonFlexible } from "../importer";
 
 const sampleLinks: ExportLink[] = [
   {
@@ -71,9 +71,9 @@ describe("exportJson", () => {
     expect(parsed.exportedAt <= after).toBe(true);
   });
 
-  test("round-trip: output can be parsed by parseJson", () => {
+  test("round-trip: output can be parsed by parseJsonFlexible", () => {
     const output = exportJson(sampleLinks);
-    const result = parseJson(output);
+    const result = parseJsonFlexible(output);
 
     expect(result.errors).toHaveLength(0);
     expect(result.items).toHaveLength(3);

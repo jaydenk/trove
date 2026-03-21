@@ -285,8 +285,12 @@ describe("import/export routes", () => {
       expect(link!.collection_id).toBe(refCollection!.id);
     });
 
-    test("rejects missing format", async () => {
+    test("auto-detects format when format is omitted", async () => {
       const app = createApp();
+
+      const jsonData = JSON.stringify([
+        { url: "https://example.com/auto", title: "Auto Detected" },
+      ]);
 
       const res = await app.request("/api/import", {
         method: "POST",
@@ -294,12 +298,53 @@ describe("import/export routes", () => {
           Authorization: `Bearer ${userToken}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ data: "some data" }),
+        body: JSON.stringify({ data: jsonData }),
       });
 
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(200);
       const body = await res.json();
-      expect(body.error.code).toBe("VALIDATION_ERROR");
+      expect(body.imported).toBe(1);
+      expect(body.detectedFormat).toBe("json");
+    });
+
+    test("returns detectedFormat in response", async () => {
+      const app = createApp();
+
+      const csvData = "url,title\nhttps://csv-detect.com,CSV Detect";
+
+      const res = await app.request("/api/import", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${userToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ data: csvData }),
+      });
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.imported).toBe(1);
+      expect(body.detectedFormat).toBe("csv");
+    });
+
+    test("imports plain text with URLs (auto-detected)", async () => {
+      const app = createApp();
+
+      const textData = "Check out https://text-import.com and https://text-import2.com today";
+
+      const res = await app.request("/api/import", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${userToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ data: textData }),
+      });
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.imported).toBe(2);
+      expect(body.detectedFormat).toBe("text");
     });
   });
 

@@ -5,7 +5,7 @@ import { createLink, exportLinks } from "../db/queries/links";
 import { getCollectionByName } from "../db/queries/collections";
 import { getOrCreateTag, addTagToLink } from "../db/queries/tags";
 import { extractAndUpdate } from "../services/extractor";
-import { parseHtmlBookmarks, parseCsv, parseJson } from "../services/importer";
+import { smartImport } from "../services/importer";
 import { exportJson, exportCsv, exportHtml } from "../services/exporter";
 import { ValidationError } from "../lib/errors";
 import { emitLinkEvent } from "../lib/events";
@@ -47,43 +47,15 @@ importExport.post("/api/import", async (c) => {
     }
   }
 
-  if (!format || !["html", "csv", "json"].includes(format)) {
-    throw new ValidationError(
-      "Format is required and must be one of: html, csv, json"
-    );
-  }
-
   if (!data) {
     throw new ValidationError("No data provided");
   }
 
-  let items: ImportItem[];
-  let parseErrors: string[];
-
-  switch (format) {
-    case "html": {
-      const result = parseHtmlBookmarks(data);
-      items = result.items;
-      parseErrors = result.errors;
-      break;
-    }
-    case "csv": {
-      const result = parseCsv(data);
-      items = result.items;
-      parseErrors = result.errors;
-      break;
-    }
-    case "json": {
-      const result = parseJson(data);
-      items = result.items;
-      parseErrors = result.errors;
-      break;
-    }
-    default: {
-      items = [];
-      parseErrors = [`Unknown format: ${format}`];
-    }
-  }
+  // Use smart import with optional format hint — auto-detects if no hint
+  const { items, errors: parseErrors, detectedFormat } = smartImport(
+    data,
+    format,
+  );
 
   let imported = 0;
   let skipped = 0;
@@ -138,7 +110,7 @@ importExport.post("/api/import", async (c) => {
     emitLinkEvent({ type: "link:created", linkId: "bulk", userId: user.id });
   }
 
-  return c.json({ imported, skipped, errors });
+  return c.json({ imported, skipped, errors, detectedFormat });
 });
 
 // ---------------------------------------------------------------------------

@@ -25,6 +25,8 @@ export default function CollectionSidebar({
   const { collections, isLoading: collectionsLoading } = useCollections();
   const { tags, isLoading: tagsLoading } = useTags();
 
+  const visibleTags = tags.filter((t) => (t.linkCount ?? 0) > 0);
+
   const inboxCollectionId = collections.find(
     (c) => c.name.toLowerCase() === "inbox",
   )?.id ?? null;
@@ -111,12 +113,12 @@ export default function CollectionSidebar({
             <span className="px-3 py-1.5 text-xs text-muted dark:text-dark-muted">
               Loading...
             </span>
-          ) : tags.length === 0 ? (
+          ) : visibleTags.length === 0 ? (
             <span className="px-3 py-1.5 text-xs text-muted dark:text-dark-muted">
-              No tags yet
+              No tags
             </span>
           ) : (
-            tags.map((t) => (
+            visibleTags.map((t) => (
               <button
                 key={t.id}
                 type="button"

@@ -133,7 +133,7 @@ describe("import/export routes", () => {
       expect(count!.cnt).toBe(0);
     });
 
-    test("previews Linkwarden backup format", async () => {
+    test("previews nested collections with link arrays", async () => {
       const app = createApp();
 
       const jsonData = JSON.stringify({

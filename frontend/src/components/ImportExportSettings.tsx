@@ -259,9 +259,9 @@ export default function ImportExportSettings({
         <div>
           <h3 className={sectionTitle}>Import</h3>
           <p className={sectionDesc}>
-            Import links from any file — browser bookmarks, Linkwarden backups,
-            spreadsheets, JSON exports, or plain text with URLs. The format is
-            auto-detected and you can review items before importing.
+            Import links from any file — browser bookmarks, JSON exports,
+            spreadsheets, or plain text with URLs. The format is auto-detected
+            and you can review items before importing.
           </p>
 
           <div className="mt-3 space-y-3">

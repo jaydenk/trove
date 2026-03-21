@@ -253,144 +253,108 @@ function findField(
   return undefined;
 }
 
-/**
- * Detect whether the parsed JSON is a Linkwarden backup.
- *
- * Linkwarden exports look like:
- * ```json
- * { "name": "...", "collections": [{ "id": 1, "name": "...", "links": [...] }] }
- * ```
- *
- * We check for a top-level `collections` array where at least one entry has a
- * `links` array.
- */
-function isLinkwardenFormat(
-  obj: Record<string, unknown>,
-): obj is Record<string, unknown> & {
-  collections: Array<Record<string, unknown>>;
-} {
-  const collections = obj.collections;
-  if (!Array.isArray(collections) || collections.length === 0) return false;
-
-  // At least one collection must have a `links` array
-  return collections.some(
-    (c) =>
-      c !== null &&
-      typeof c === "object" &&
-      Array.isArray((c as Record<string, unknown>).links),
-  );
+/** A discovered array of link objects along with optional parent context. */
+interface LinkArrayResult {
+  items: unknown[];
+  /** Name of the parent object (e.g. a collection name) if one was found. */
+  contextName?: string;
 }
 
 /**
- * Flatten a Linkwarden backup into ImportItems.
- *
- * Each collection has a `links` array. We iterate every collection and for each
- * link inside it we build an ImportItem with the collection name from the parent.
+ * Build an ImportItem from a raw object using fuzzy field matching.
+ * Returns null if the object has no recognisable URL field.
  */
-function parseLinkwardenCollections(
-  collections: Array<Record<string, unknown>>,
-  items: ImportItem[],
-  errors: string[],
-): void {
-  for (const collection of collections) {
-    if (collection === null || typeof collection !== "object") continue;
+function buildImportItem(
+  obj: Record<string, unknown>,
+  contextName?: string,
+): { item: ImportItem } | { error: string } {
+  // URL
+  const urlVal = findField(obj, URL_FIELDS);
+  const url = typeof urlVal === "string" ? urlVal.trim() : "";
+  if (!url) {
+    return { error: "missing or empty URL" };
+  }
 
-    const collectionName =
-      typeof collection.name === "string" && collection.name.trim()
-        ? collection.name.trim()
-        : undefined;
+  const item: ImportItem = { url };
 
-    const links = Array.isArray(collection.links)
-      ? (collection.links as unknown[])
-      : [];
+  // Title
+  const titleVal = findField(obj, TITLE_FIELDS);
+  if (typeof titleVal === "string" && titleVal.trim()) {
+    item.title = titleVal.trim();
+  }
 
-    for (let i = 0; i < links.length; i++) {
-      const raw = links[i];
-      if (raw === null || typeof raw !== "object") {
-        errors.push(
-          `Linkwarden collection "${collectionName ?? "?"}" item ${i}: not an object — skipped`,
-        );
-        continue;
-      }
+  // Description
+  const descVal = findField(obj, DESC_FIELDS);
+  if (typeof descVal === "string" && descVal.trim()) {
+    item.description = descVal.trim();
+  }
 
-      const obj = raw as Record<string, unknown>;
+  // Tags — accept string (comma/semicolon-separated), array of strings,
+  // or array of objects with a `name` field
+  const tagsVal = findField(obj, TAGS_FIELDS);
+  if (Array.isArray(tagsVal)) {
+    const tags = tagsVal
+      .map((t) => {
+        if (typeof t === "string") return t.trim();
+        if (t !== null && typeof t === "object" && "name" in t) {
+          const name = (t as Record<string, unknown>).name;
+          return typeof name === "string" ? name.trim() : "";
+        }
+        return "";
+      })
+      .filter(Boolean);
+    if (tags.length > 0) item.tags = tags;
+  } else if (typeof tagsVal === "string" && tagsVal.trim()) {
+    const tags = tagsVal
+      .split(/[,;]/)
+      .map((t) => t.trim())
+      .filter(Boolean);
+    if (tags.length > 0) item.tags = tags;
+  }
 
-      // URL
-      const urlVal = findField(obj, URL_FIELDS);
-      const url = typeof urlVal === "string" ? urlVal.trim() : "";
-      if (!url) {
-        errors.push(
-          `Linkwarden collection "${collectionName ?? "?"}" item ${i}: missing or empty URL — skipped`,
-        );
-        continue;
-      }
-
-      const item: ImportItem = { url };
-
-      // Title — Linkwarden uses `name` for the link title
-      const titleVal = findField(obj, TITLE_FIELDS);
-      if (typeof titleVal === "string" && titleVal.trim()) {
-        item.title = titleVal.trim();
-      }
-
-      // Description
-      const descVal = findField(obj, DESC_FIELDS);
-      if (typeof descVal === "string" && descVal.trim()) {
-        item.description = descVal.trim();
-      }
-
-      // Tags — Linkwarden uses [{ name: "tag" }] objects
-      const tagsVal = findField(obj, TAGS_FIELDS);
-      if (Array.isArray(tagsVal)) {
-        const tags = tagsVal
-          .map((t) => {
-            if (typeof t === "string") return t.trim();
-            if (t !== null && typeof t === "object" && "name" in t) {
-              const name = (t as Record<string, unknown>).name;
-              return typeof name === "string" ? name.trim() : "";
-            }
-            return "";
-          })
-          .filter(Boolean);
-        if (tags.length > 0) item.tags = tags;
-      } else if (typeof tagsVal === "string" && tagsVal.trim()) {
-        const tags = tagsVal
-          .split(/[,;]/)
-          .map((t) => t.trim())
-          .filter(Boolean);
-        if (tags.length > 0) item.tags = tags;
-      }
-
-      // Collection from parent
-      if (collectionName) item.collection = collectionName;
-
-      // CreatedAt
-      const createdVal = findField(obj, CREATED_FIELDS);
-      if (typeof createdVal === "string" && createdVal.trim()) {
-        item.createdAt = createdVal.trim();
-      } else if (typeof createdVal === "number") {
-        const ms = createdVal > 1e12 ? createdVal : createdVal * 1000;
-        item.createdAt = new Date(ms).toISOString();
-      }
-
-      items.push(item);
+  // Collection — prefer parent context name, fall back to item-level field
+  if (contextName) {
+    item.collection = contextName;
+  } else {
+    const collVal = findField(obj, COLLECTION_FIELDS);
+    if (typeof collVal === "string" && collVal.trim()) {
+      item.collection = collVal.trim();
     }
   }
+
+  // CreatedAt
+  const createdVal = findField(obj, CREATED_FIELDS);
+  if (typeof createdVal === "string" && createdVal.trim()) {
+    item.createdAt = createdVal.trim();
+  } else if (typeof createdVal === "number") {
+    // Handle unix timestamps — if > 1e12, assume milliseconds; otherwise seconds
+    const ms = createdVal > 1e12 ? createdVal : createdVal * 1000;
+    item.createdAt = new Date(ms).toISOString();
+  }
+
+  return { item };
 }
 
+/** The NAME_FIELDS used to detect a parent context name for link arrays. */
+const NAME_FIELDS = ["name", "title", "label"];
+
 /**
- * Recursively search an object/array tree for arrays of objects that contain a
- * URL-like field. Returns the first matching array found via breadth-first
- * search. This handles arbitrary nesting (e.g. `{ result: { data: [{ url }] } }`).
+ * Recursively walk a JSON tree and collect ALL arrays of objects that contain
+ * URL-like fields. Each result includes the parent object's name (if any) as
+ * context — this naturally handles formats that nest links inside named
+ * collections/groups/folders.
  */
-function findLinkArrayDeep(
+function findAllLinkArrays(
   value: unknown,
-  maxDepth: number = 5,
-): unknown[] | null {
-  if (maxDepth <= 0) return null;
+  parentName?: string,
+  maxDepth: number = 6,
+): LinkArrayResult[] {
+  if (maxDepth <= 0) return [];
+
+  const results: LinkArrayResult[] = [];
 
   if (Array.isArray(value)) {
-    // Check if this array looks like it contains link objects
+    // Check if this array itself contains link objects
     const hasLinkObjects = value.some(
       (item) =>
         item !== null &&
@@ -398,27 +362,64 @@ function findLinkArrayDeep(
         !Array.isArray(item) &&
         findField(item as Record<string, unknown>, URL_FIELDS) !== undefined,
     );
-    if (hasLinkObjects) return value;
-  }
+    if (hasLinkObjects) {
+      results.push({ items: value, contextName: parentName });
+    }
 
-  if (value !== null && typeof value === "object" && !Array.isArray(value)) {
-    const obj = value as Record<string, unknown>;
-    // Prefer known wrapper keys first
-    for (const key of WRAPPER_KEYS) {
-      const match = Object.keys(obj).find((k) => k.toLowerCase() === key);
-      if (match && Array.isArray(obj[match])) {
-        const result = findLinkArrayDeep(obj[match], maxDepth - 1);
-        if (result) return result;
+    // Also recurse into each element — they may be collection-like objects
+    // that contain nested link arrays (e.g. an array of { name, links: [] })
+    for (const element of value) {
+      if (element !== null && typeof element === "object" && !Array.isArray(element)) {
+        const obj = element as Record<string, unknown>;
+        // Derive a context name from this object if it has a name-like field
+        let ctxName: string | undefined;
+        for (const nf of NAME_FIELDS) {
+          const match = Object.keys(obj).find((k) => k.toLowerCase() === nf);
+          if (match && typeof obj[match] === "string" && (obj[match] as string).trim()) {
+            ctxName = (obj[match] as string).trim();
+            break;
+          }
+        }
+
+        for (const val of Object.values(obj)) {
+          const nested = findAllLinkArrays(val, ctxName, maxDepth - 1);
+          results.push(...nested);
+        }
       }
     }
-    // Then try all other keys
-    for (const val of Object.values(obj)) {
-      const result = findLinkArrayDeep(val, maxDepth - 1);
-      if (result) return result;
+  } else if (value !== null && typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+
+    // Derive a context name from this object
+    let ctxName = parentName;
+    if (!ctxName) {
+      for (const nf of NAME_FIELDS) {
+        const match = Object.keys(obj).find((k) => k.toLowerCase() === nf);
+        if (match && typeof obj[match] === "string" && (obj[match] as string).trim()) {
+          ctxName = (obj[match] as string).trim();
+          break;
+        }
+      }
+    }
+
+    // Recurse into all values, preferring known wrapper keys first
+    const visited = new Set<string>();
+    for (const key of WRAPPER_KEYS) {
+      const match = Object.keys(obj).find((k) => k.toLowerCase() === key);
+      if (match) {
+        visited.add(match);
+        const nested = findAllLinkArrays(obj[match], ctxName, maxDepth - 1);
+        results.push(...nested);
+      }
+    }
+    for (const [key, val] of Object.entries(obj)) {
+      if (visited.has(key)) continue;
+      const nested = findAllLinkArrays(val, ctxName, maxDepth - 1);
+      results.push(...nested);
     }
   }
 
-  return null;
+  return results;
 }
 
 export function parseJsonFlexible(json: string): ImportResult {
@@ -434,60 +435,22 @@ export function parseJsonFlexible(json: string): ImportResult {
   }
 
   // -----------------------------------------------------------------------
-  // Linkwarden detection: { collections: [{ links: [...] }] }
+  // Generic approach: recursively find ALL arrays of link-like objects
+  // anywhere in the JSON tree, noting parent context names for collections.
   // -----------------------------------------------------------------------
-  if (
-    parsed !== null &&
-    typeof parsed === "object" &&
-    !Array.isArray(parsed) &&
-    isLinkwardenFormat(parsed as Record<string, unknown>)
-  ) {
-    parseLinkwardenCollections(
-      (parsed as Record<string, unknown>).collections as Array<
-        Record<string, unknown>
-      >,
-      items,
-      errors,
-    );
-    return { items, errors, detectedFormat: "json" };
-  }
+  const linkArrays = findAllLinkArrays(parsed);
 
-  // -----------------------------------------------------------------------
-  // Standard: array or known wrapper key, with deep recursive fallback
-  // -----------------------------------------------------------------------
-  let rawItems: unknown[];
-
-  if (Array.isArray(parsed)) {
-    rawItems = parsed;
-  } else if (parsed !== null && typeof parsed === "object") {
-    const obj = parsed as Record<string, unknown>;
-    // Try to unwrap known wrapper keys first
-    let found = false;
-    for (const key of WRAPPER_KEYS) {
-      const lowerKeys = Object.keys(obj);
-      const match = lowerKeys.find((k) => k.toLowerCase() === key);
-      if (match && Array.isArray(obj[match])) {
-        rawItems = obj[match] as unknown[];
-        found = true;
-        break;
-      }
+  if (linkArrays.length === 0) {
+    // No link arrays found anywhere in the structure
+    if (parsed === null || typeof parsed !== "object") {
+      return {
+        items: [],
+        errors: [
+          "JSON must be an array or an object with a recognised wrapper key (links, data, bookmarks, items)",
+        ],
+        detectedFormat: "json",
+      };
     }
-    if (!found) {
-      // Recursive deep search for arrays of link-like objects
-      const deepResult = findLinkArrayDeep(parsed);
-      if (deepResult) {
-        rawItems = deepResult;
-      } else {
-        return {
-          items: [],
-          errors: [
-            "JSON must be an array or an object with a recognised wrapper key (links, data, bookmarks, items)",
-          ],
-          detectedFormat: "json",
-        };
-      }
-    }
-  } else {
     return {
       items: [],
       errors: [
@@ -497,78 +460,31 @@ export function parseJsonFlexible(json: string): ImportResult {
     };
   }
 
-  for (let i = 0; i < rawItems!.length; i++) {
-    const raw = rawItems![i];
-    if (raw === null || typeof raw !== "object") {
-      errors.push(`Item ${i}: not an object — skipped`);
-      continue;
+  // Deduplicate by URL across all discovered link arrays
+  const seenUrls = new Set<string>();
+
+  for (const linkArray of linkArrays) {
+    for (let i = 0; i < linkArray.items.length; i++) {
+      const raw = linkArray.items[i];
+      if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+        errors.push(`Item ${i}: not an object — skipped`);
+        continue;
+      }
+
+      const obj = raw as Record<string, unknown>;
+      const result = buildImportItem(obj, linkArray.contextName);
+
+      if ("error" in result) {
+        errors.push(`Item ${i}: ${result.error} — skipped`);
+        continue;
+      }
+
+      // Deduplicate by URL
+      if (seenUrls.has(result.item.url)) continue;
+      seenUrls.add(result.item.url);
+
+      items.push(result.item);
     }
-
-    const obj = raw as Record<string, unknown>;
-
-    // Find URL
-    const urlVal = findField(obj, URL_FIELDS);
-    const url = typeof urlVal === "string" ? urlVal.trim() : "";
-
-    if (!url) {
-      errors.push(`Item ${i}: missing or empty URL field — skipped`);
-      continue;
-    }
-
-    const item: ImportItem = { url };
-
-    // Title
-    const titleVal = findField(obj, TITLE_FIELDS);
-    if (typeof titleVal === "string" && titleVal.trim()) {
-      item.title = titleVal.trim();
-    }
-
-    // Description
-    const descVal = findField(obj, DESC_FIELDS);
-    if (typeof descVal === "string" && descVal.trim()) {
-      item.description = descVal.trim();
-    }
-
-    // Tags — accept string (comma/semicolon-separated), array of strings,
-    // or array of objects with a `name` field (Linkwarden style)
-    const tagsVal = findField(obj, TAGS_FIELDS);
-    if (Array.isArray(tagsVal)) {
-      const tags = tagsVal
-        .map((t) => {
-          if (typeof t === "string") return t.trim();
-          if (t !== null && typeof t === "object" && "name" in t) {
-            const name = (t as Record<string, unknown>).name;
-            return typeof name === "string" ? name.trim() : "";
-          }
-          return "";
-        })
-        .filter(Boolean);
-      if (tags.length > 0) item.tags = tags;
-    } else if (typeof tagsVal === "string" && tagsVal.trim()) {
-      const tags = tagsVal
-        .split(/[,;]/)
-        .map((t) => t.trim())
-        .filter(Boolean);
-      if (tags.length > 0) item.tags = tags;
-    }
-
-    // Collection
-    const collVal = findField(obj, COLLECTION_FIELDS);
-    if (typeof collVal === "string" && collVal.trim()) {
-      item.collection = collVal.trim();
-    }
-
-    // CreatedAt
-    const createdVal = findField(obj, CREATED_FIELDS);
-    if (typeof createdVal === "string" && createdVal.trim()) {
-      item.createdAt = createdVal.trim();
-    } else if (typeof createdVal === "number") {
-      // Handle unix timestamps — if > 1e12, assume milliseconds; otherwise seconds
-      const ms = createdVal > 1e12 ? createdVal : createdVal * 1000;
-      item.createdAt = new Date(ms).toISOString();
-    }
-
-    items.push(item);
   }
 
   return { items, errors, detectedFormat: "json" };

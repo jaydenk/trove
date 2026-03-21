@@ -410,7 +410,7 @@ describe("parseJsonFlexible", () => {
     expect(result.errors).toHaveLength(1);
   });
 
-  test("parses Linkwarden backup format with nested collections/links", () => {
+  test("handles nested collections with link arrays", () => {
     const json = JSON.stringify({
       name: "Jayden",
       collections: [
@@ -481,7 +481,7 @@ describe("parseJsonFlexible", () => {
     });
   });
 
-  test("parses Linkwarden format with empty collections", () => {
+  test("handles nested collections where some are empty", () => {
     const json = JSON.stringify({
       name: "User",
       collections: [
@@ -503,7 +503,7 @@ describe("parseJsonFlexible", () => {
     expect(result.items[0].collection).toBe("Has Links");
   });
 
-  test("parses Linkwarden format with duplicate collection names", () => {
+  test("handles duplicate collection names across multiple groups", () => {
     const json = JSON.stringify({
       name: "User",
       collections: [
@@ -528,7 +528,7 @@ describe("parseJsonFlexible", () => {
     expect(result.items[1].collection).toBe("Imports");
   });
 
-  test("handles Linkwarden tag objects with { name: string } format", () => {
+  test("handles tag objects with name field in nested collections", () => {
     const json = JSON.stringify({
       name: "User",
       collections: [
@@ -552,7 +552,7 @@ describe("parseJsonFlexible", () => {
     expect(result.items[0].tags).toEqual(["alpha", "beta", "gamma"]);
   });
 
-  test("handles tag objects with { name } in standard (non-Linkwarden) JSON", () => {
+  test("handles tag objects with { name } in flat JSON arrays", () => {
     const json = JSON.stringify([
       {
         url: "https://example.com",
@@ -581,6 +581,78 @@ describe("parseJsonFlexible", () => {
     expect(result.items).toHaveLength(2);
     expect(result.items[0].url).toBe("https://deep-one.com");
     expect(result.items[1].url).toBe("https://deep-two.com");
+  });
+
+  test("handles arbitrary deep nesting with parent context as collection", () => {
+    const json = JSON.stringify({
+      export: {
+        version: 2,
+        groups: [
+          {
+            name: "Research",
+            data: {
+              entries: [
+                { url: "https://arxiv.org/paper/1", title: "Paper A" },
+                { url: "https://arxiv.org/paper/2", title: "Paper B" },
+              ],
+            },
+          },
+          {
+            name: "Recipes",
+            data: {
+              entries: [
+                { url: "https://cooking.com/soup", title: "Soup Recipe" },
+              ],
+            },
+          },
+        ],
+      },
+    });
+
+    const result = parseJsonFlexible(json);
+    expect(result.errors).toHaveLength(0);
+    expect(result.items).toHaveLength(3);
+
+    expect(result.items[0].url).toBe("https://arxiv.org/paper/1");
+    expect(result.items[0].title).toBe("Paper A");
+    expect(result.items[0].collection).toBe("Research");
+
+    expect(result.items[1].url).toBe("https://arxiv.org/paper/2");
+    expect(result.items[1].title).toBe("Paper B");
+    expect(result.items[1].collection).toBe("Research");
+
+    expect(result.items[2].url).toBe("https://cooking.com/soup");
+    expect(result.items[2].title).toBe("Soup Recipe");
+    expect(result.items[2].collection).toBe("Recipes");
+  });
+
+  test("deduplicates URLs across multiple link arrays", () => {
+    const json = JSON.stringify({
+      collections: [
+        {
+          name: "Group A",
+          links: [
+            { url: "https://shared.com", title: "Shared Link" },
+            { url: "https://only-a.com", title: "Only A" },
+          ],
+        },
+        {
+          name: "Group B",
+          links: [
+            { url: "https://shared.com", title: "Shared Link Dupe" },
+            { url: "https://only-b.com", title: "Only B" },
+          ],
+        },
+      ],
+    });
+
+    const result = parseJsonFlexible(json);
+    expect(result.items).toHaveLength(3);
+    // First occurrence wins
+    expect(result.items[0].url).toBe("https://shared.com");
+    expect(result.items[0].collection).toBe("Group A");
+    expect(result.items[1].url).toBe("https://only-a.com");
+    expect(result.items[2].url).toBe("https://only-b.com");
   });
 
   test("preserves all optional fields", () => {
@@ -898,7 +970,7 @@ describe("smartImport", () => {
     expect(result.errors.length).toBeGreaterThan(0);
   });
 
-  test("auto-detects Linkwarden backup JSON", () => {
+  test("auto-detects nested collection JSON format", () => {
     const json = JSON.stringify({
       name: "Jayden",
       collections: [

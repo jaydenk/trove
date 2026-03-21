@@ -147,6 +147,8 @@ function PluginActionButton({
 // LinkCard
 // ---------------------------------------------------------------------------
 
+export type SwipeAction = "archive" | "delete" | "none" | `plugin:${string}`;
+
 export interface LinkCardProps {
   link: Link;
   onClick: () => void;
@@ -160,6 +162,9 @@ export interface LinkCardProps {
   onArchive?: (link: Link) => void;
   onDelete?: (link: Link) => void;
   onPluginAction?: (link: Link, plugin: PluginInfo) => void;
+  swipeLeftAction?: SwipeAction;
+  swipeRightAction?: SwipeAction;
+  onSwipeAction?: (link: Link, action: SwipeAction) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -244,6 +249,52 @@ function useSwipe(
   return { offset, triggered, onTouchStart, onTouchMove, onTouchEnd };
 }
 
+// ---------------------------------------------------------------------------
+// Swipe action appearance helpers
+// ---------------------------------------------------------------------------
+
+function swipeActionBg(action: SwipeAction): string {
+  if (action === "delete") return "bg-red-500";
+  if (action === "archive") return "bg-green-500";
+  if (action.startsWith("plugin:")) return "bg-blue-500";
+  return "";
+}
+
+function swipeActionLabel(action: SwipeAction, plugins?: PluginInfo[]): string {
+  if (action === "delete") return "Delete";
+  if (action === "archive") return "Archive";
+  if (action.startsWith("plugin:") && plugins) {
+    const pluginId = action.slice("plugin:".length);
+    const plugin = plugins.find((p) => p.id === pluginId);
+    if (plugin) return plugin.actionLabel ?? plugin.name;
+  }
+  return "";
+}
+
+function swipeActionIcon(action: SwipeAction, plugins?: PluginInfo[]): React.ReactNode {
+  if (action === "delete") {
+    return (
+      <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+        <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" />
+      </svg>
+    );
+  }
+  if (action === "archive") {
+    return (
+      <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+        <path d="M2 3a1 1 0 00-1 1v1a1 1 0 001 1h16a1 1 0 001-1V4a1 1 0 00-1-1H2z" />
+        <path fillRule="evenodd" d="M2 7.5h16l-.811 7.71a2 2 0 01-1.99 1.79H4.802a2 2 0 01-1.99-1.79L2 7.5zm5.22 1.72a.75.75 0 011.06 0L10 10.94l1.72-1.72a.75.75 0 111.06 1.06l-2.25 2.25a.75.75 0 01-1.06 0l-2.25-2.25a.75.75 0 010-1.06z" clipRule="evenodd" />
+      </svg>
+    );
+  }
+  if (action.startsWith("plugin:") && plugins) {
+    const pluginId = action.slice("plugin:".length);
+    const plugin = plugins.find((p) => p.id === pluginId);
+    if (plugin) return <span className="text-sm">{plugin.icon}</span>;
+  }
+  return null;
+}
+
 export default function LinkCard({
   link,
   onClick,
@@ -257,6 +308,9 @@ export default function LinkCard({
   onArchive,
   onDelete,
   onPluginAction,
+  swipeLeftAction = "delete",
+  swipeRightAction = "archive",
+  onSwipeAction,
 }: LinkCardProps) {
   const executablePlugins = plugins?.filter(
     (p) => p.hasExecute && p.isConfigured,
@@ -274,35 +328,22 @@ export default function LinkCard({
     return () => window.removeEventListener("resize", handler);
   }, []);
 
-  const firstPlugin = executablePlugins?.[0];
-
-  const handleSwipeLeft = onDelete
-    ? () => onDelete(link)
+  // Build swipe handlers from configured actions
+  const handleSwipeLeft = swipeLeftAction !== "none" && onSwipeAction
+    ? () => onSwipeAction(link, swipeLeftAction)
     : undefined;
 
-  const handleSwipeRight = firstPlugin && onPluginAction
-    ? () => onPluginAction(link, firstPlugin)
-    : onArchive
-      ? () => onArchive(link)
-      : undefined;
+  const handleSwipeRight = swipeRightAction !== "none" && onSwipeAction
+    ? () => onSwipeAction(link, swipeRightAction)
+    : undefined;
 
   const { offset, triggered, onTouchStart, onTouchMove, onTouchEnd } =
     useSwipe(isMobile, handleSwipeLeft, handleSwipeRight);
 
-  // Background colours for swipe indicators
-  const swipeBg =
-    offset < 0
-      ? "bg-red-500"
-      : firstPlugin && onPluginAction
-        ? "bg-blue-500"
-        : "bg-green-500";
-
-  const swipeLabel =
-    offset < 0
-      ? "Delete"
-      : firstPlugin && onPluginAction
-        ? (firstPlugin.actionLabel ?? firstPlugin.name)
-        : "Archive";
+  // Background colours and labels for swipe indicators
+  const activeAction = offset < 0 ? swipeLeftAction : swipeRightAction;
+  const swipeBg = swipeActionBg(activeAction);
+  const swipeLabel = swipeActionLabel(activeAction, plugins);
 
   return (
     <div className="relative overflow-hidden">
@@ -311,7 +352,12 @@ export default function LinkCard({
         <div
           className={`absolute inset-0 flex items-center ${offset < 0 ? "justify-end" : "justify-start"} px-5 ${swipeBg} text-white text-sm font-medium`}
         >
-          <span>{triggered ? swipeLabel : Math.abs(offset) >= SWIPE_THRESHOLD ? swipeLabel : ""}</span>
+          {(triggered || Math.abs(offset) >= SWIPE_THRESHOLD) && (
+            <span className="flex items-center gap-1.5">
+              {swipeActionIcon(activeAction, plugins)}
+              {swipeLabel}
+            </span>
+          )}
         </div>
       )}
 

@@ -23,6 +23,7 @@ Trove is a self-hosted link inbox for people who save links from many sources an
 - **MCP server** for Claude integration — search, browse, and save links via 7 tools
 - **Import/export** — HTML bookmarks, CSV, and JSON for portability
 - **Multi-user** with username/password auth, admin management, and API tokens
+- **Customisable swipe actions** on mobile — swipe left/right to archive, delete, or trigger any plugin
 - **Single-container Docker deployment** with CI/CD to GHCR
 
 ## Quick Start

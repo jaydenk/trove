@@ -6,6 +6,7 @@ import { api, connectSSE } from "../api";
 import CollectionSidebar from "./CollectionSidebar";
 import SettingsView from "./SettingsView";
 import LinkCard from "./LinkCard";
+import type { SwipeAction } from "./LinkCard";
 import LinkDetail from "./LinkDetail";
 import SearchBar from "./SearchBar";
 import AddLinkModal from "./AddLinkModal";
@@ -93,6 +94,25 @@ export default function AuthenticatedApp({
     if (stored === "light" || stored === "dark") return stored;
     return "system";
   });
+
+  // -----------------------------------------------------------------------
+  // Swipe action preferences
+  // -----------------------------------------------------------------------
+
+  const [swipeLeftAction, setSwipeLeftAction] = useState<SwipeAction>(() => {
+    return (localStorage.getItem("trove_swipe_left") as SwipeAction) || "delete";
+  });
+  const [swipeRightAction, setSwipeRightAction] = useState<SwipeAction>(() => {
+    return (localStorage.getItem("trove_swipe_right") as SwipeAction) || "archive";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("trove_swipe_left", swipeLeftAction);
+  }, [swipeLeftAction]);
+
+  useEffect(() => {
+    localStorage.setItem("trove_swipe_right", swipeRightAction);
+  }, [swipeRightAction]);
 
   useEffect(() => {
     function applyTheme(pref: "light" | "dark" | "system") {
@@ -326,6 +346,37 @@ export default function AuthenticatedApp({
       }
     },
     [],
+  );
+
+  // -----------------------------------------------------------------------
+  // Swipe action handler
+  // -----------------------------------------------------------------------
+
+  const handleSwipeAction = useCallback(
+    async (link: Link, action: SwipeAction) => {
+      try {
+        if (action === "archive") {
+          await api.links.archive(link.id);
+          refetchLinks();
+          refetchCollections();
+        } else if (action === "delete") {
+          await api.links.delete(link.id);
+          if (selectedLinkId === link.id) setSelectedLinkId(null);
+          refetchLinks();
+          refetchCollections();
+        } else if (action.startsWith("plugin:")) {
+          const pluginId = action.slice("plugin:".length);
+          const result = await api.plugins.executeAction(link.id, pluginId);
+          if (result.type === "redirect" && result.url) {
+            window.open(result.url, "_blank", "noopener,noreferrer");
+          }
+          refetchLinks();
+        }
+      } catch {
+        // Silently fail
+      }
+    },
+    [selectedLinkId, refetchLinks, refetchCollections],
   );
 
   // -----------------------------------------------------------------------
@@ -676,6 +727,9 @@ export default function AuthenticatedApp({
                       onArchive={handleContextArchive}
                       onDelete={handleContextDelete}
                       onPluginAction={handleContextPluginAction}
+                      swipeLeftAction={swipeLeftAction}
+                      swipeRightAction={swipeRightAction}
+                      onSwipeAction={handleSwipeAction}
                     />
                     {/* FTS snippets use dangerouslySetInnerHTML because SQLite
                         snippet() returns <b> tags for match highlighting.

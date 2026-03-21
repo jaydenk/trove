@@ -101,13 +101,20 @@ When a link is focused, a hint bar appears at the bottom of the link list showin
 
 ## Bulk Actions
 
-Select multiple links to perform actions in bulk:
+Select multiple links to perform actions in bulk. There are several ways to enter bulk selection mode:
 
-1. Press `x` on a focused link to toggle its selection, or click the checkbox on a link card
-2. A floating action bar appears at the bottom of the screen
-3. Available bulk actions: **Archive**, **Delete**, **Move to Collection**
+- **Desktop:** Click the **Select** button in the header (between search and Add)
+- **Mobile:** Tap the checkbox icon in the navigation bar, or **long-press** a link card (500ms) to enter bulk mode and select that card
+- **Keyboard:** Press `x` on a focused link to toggle its selection
 
-Press `Escape` to clear the selection.
+Once in bulk mode, all link cards display checkboxes. The floating action bar at the bottom provides:
+
+- **Select All** / **Deselect All** — selects or clears all links in the current filtered view
+- **Move to Collection** — move selected links to a different collection
+- **Archive** — archive all selected links
+- **Delete** — delete all selected links (with confirmation)
+
+Click **Cancel** in the header/nav or press `Escape` to exit bulk mode and clear the selection.
 
 ## Import and Export
 

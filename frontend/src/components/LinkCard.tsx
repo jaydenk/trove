@@ -158,6 +158,7 @@ export interface LinkCardProps {
   isSelectable?: boolean;
   isChecked?: boolean;
   onToggleSelect?: () => void;
+  onLongPress?: () => void;
   onContextMenu?: (e: React.MouseEvent, link: Link) => void;
   onArchive?: (link: Link) => void;
   onDelete?: (link: Link) => void;
@@ -304,6 +305,7 @@ export default function LinkCard({
   isSelectable,
   isChecked,
   onToggleSelect,
+  onLongPress,
   onContextMenu,
   onArchive,
   onDelete,
@@ -320,6 +322,57 @@ export default function LinkCard({
   const [isMobile, setIsMobile] = useState(
     typeof window !== "undefined" && window.innerWidth < 1024,
   );
+
+  // Long-press for mobile bulk selection
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTriggered = useRef(false);
+  const touchStartPos = useRef<{ x: number; y: number } | null>(null);
+
+  const handleLongPressStart = useCallback(
+    (e: React.TouchEvent) => {
+      if (!onLongPress || isSelectable) return;
+      longPressTriggered.current = false;
+      touchStartPos.current = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+      };
+      longPressTimer.current = setTimeout(() => {
+        longPressTriggered.current = true;
+        onLongPress();
+        // Provide haptic feedback if available
+        if (navigator.vibrate) navigator.vibrate(30);
+      }, 500);
+    },
+    [onLongPress, isSelectable],
+  );
+
+  const handleLongPressMove = useCallback(
+    (e: React.TouchEvent) => {
+      if (!longPressTimer.current || !touchStartPos.current) return;
+      const dx = e.touches[0].clientX - touchStartPos.current.x;
+      const dy = e.touches[0].clientY - touchStartPos.current.y;
+      // Cancel long-press if finger moved more than 10px
+      if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+        clearTimeout(longPressTimer.current);
+        longPressTimer.current = null;
+      }
+    },
+    [],
+  );
+
+  const handleLongPressEnd = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }, []);
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    };
+  }, []);
 
   // Listen for resize to keep isMobile in sync
   useEffect(() => {
@@ -364,8 +417,12 @@ export default function LinkCard({
       <button
         type="button"
         onClick={(e) => {
-          // Don't fire click if we just finished a swipe
+          // Don't fire click if we just finished a swipe or long-press
           if (Math.abs(offset) > 5) return;
+          if (longPressTriggered.current) {
+            longPressTriggered.current = false;
+            return;
+          }
           onClick();
         }}
         onContextMenu={(e) => {
@@ -374,9 +431,18 @@ export default function LinkCard({
             onContextMenu(e, link);
           }
         }}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
+        onTouchStart={(e) => {
+          handleLongPressStart(e);
+          onTouchStart(e);
+        }}
+        onTouchMove={(e) => {
+          handleLongPressMove(e);
+          onTouchMove(e);
+        }}
+        onTouchEnd={(e) => {
+          handleLongPressEnd();
+          onTouchEnd();
+        }}
         style={
           isMobile && offset !== 0
             ? { transform: `translateX(${offset}px)`, transition: triggered ? "transform 0.2s ease-out" : "none" }

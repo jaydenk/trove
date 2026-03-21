@@ -4,6 +4,8 @@ export interface MobileNavProps {
   currentView: string;
   searchQuery?: string;
   onSearchChange?: (value: string) => void;
+  bulkModeActive: boolean;
+  onToggleBulkMode: () => void;
 }
 
 export default function MobileNav({
@@ -12,6 +14,8 @@ export default function MobileNav({
   currentView,
   searchQuery = "",
   onSearchChange,
+  bulkModeActive,
+  onToggleBulkMode,
 }: MobileNavProps) {
   return (
     <header className="flex lg:hidden flex-col border-b border-border dark:border-dark-border shrink-0">
@@ -41,21 +45,47 @@ export default function MobileNav({
           {currentView}
         </span>
 
-        {/* Add button — 44px touch target */}
-        <button
-          type="button"
-          onClick={onOpenAddModal}
-          className="inline-flex items-center justify-center h-11 w-11 -mr-1.5 rounded-md bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors"
-          aria-label="Add link"
-        >
-          <svg
-            className="h-5 w-5"
-            viewBox="0 0 20 20"
-            fill="currentColor"
+        <div className="flex items-center gap-1 -mr-1.5">
+          {/* Select / Cancel button — 44px touch target */}
+          <button
+            type="button"
+            onClick={onToggleBulkMode}
+            className={`inline-flex items-center justify-center h-11 w-11 rounded-md transition-colors ${
+              bulkModeActive
+                ? "bg-neutral-200 dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100"
+                : "text-neutral-600 dark:text-neutral-400 hover:bg-hover dark:hover:bg-dark-hover"
+            }`}
+            aria-label={bulkModeActive ? "Cancel selection" : "Select links"}
           >
-            <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
-          </svg>
-        </button>
+            {bulkModeActive ? (
+              /* X icon for cancel */
+              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+              </svg>
+            ) : (
+              /* Checkbox icon */
+              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M3.5 2A1.5 1.5 0 002 3.5v3A1.5 1.5 0 003.5 8h3A1.5 1.5 0 008 6.5v-3A1.5 1.5 0 006.5 2h-3zm3.354 1.854a.5.5 0 00-.708-.708L4.5 4.793l-.646-.647a.5.5 0 10-.708.708l1 1a.5.5 0 00.708 0l2-2zM10.5 4a.75.75 0 000 1.5h6a.75.75 0 000-1.5h-6zM10.5 14.5a.75.75 0 000 1.5h6a.75.75 0 000-1.5h-6zM10.5 9.25a.75.75 0 000 1.5h6a.75.75 0 000-1.5h-6zM3.5 12A1.5 1.5 0 002 13.5v3A1.5 1.5 0 003.5 18h3A1.5 1.5 0 008 16.5v-3A1.5 1.5 0 006.5 12h-3zm3.354 1.854a.5.5 0 00-.708-.708L4.5 14.793l-.646-.647a.5.5 0 10-.708.708l1 1a.5.5 0 00.708 0l2-2zM3.5 7A1.5 1.5 0 002 8.5v3A1.5 1.5 0 003.5 13h3A1.5 1.5 0 008 11.5v-3A1.5 1.5 0 006.5 7h-3z" clipRule="evenodd" />
+              </svg>
+            )}
+          </button>
+
+          {/* Add button — 44px touch target */}
+          <button
+            type="button"
+            onClick={onOpenAddModal}
+            className="inline-flex items-center justify-center h-11 w-11 rounded-md bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors"
+            aria-label="Add link"
+          >
+            <svg
+              className="h-5 w-5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Mobile search bar */}

@@ -3,20 +3,26 @@ import type { Collection } from "../api";
 
 export interface BulkActionBarProps {
   selectedCount: number;
+  totalCount: number;
   collections: Collection[];
   onArchive: () => Promise<void>;
   onDelete: () => Promise<void>;
   onMoveToCollection: (collectionId: string) => Promise<void>;
   onClearSelection: () => void;
+  onSelectAll: () => void;
+  onDeselectAll: () => void;
 }
 
 export default function BulkActionBar({
   selectedCount,
+  totalCount,
   collections,
   onArchive,
   onDelete,
   onMoveToCollection,
   onClearSelection,
+  onSelectAll,
+  onDeselectAll,
 }: BulkActionBarProps) {
   const [showMoveDropdown, setShowMoveDropdown] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -57,6 +63,27 @@ export default function BulkActionBar({
       <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100 whitespace-nowrap tabular-nums">
         {selectedCount} selected
       </span>
+
+      {/* Select All / Deselect All */}
+      {selectedCount < totalCount ? (
+        <button
+          type="button"
+          onClick={onSelectAll}
+          disabled={isProcessing}
+          className="text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 disabled:opacity-40 transition-colors whitespace-nowrap"
+        >
+          Select all
+        </button>
+      ) : totalCount > 0 ? (
+        <button
+          type="button"
+          onClick={onDeselectAll}
+          disabled={isProcessing}
+          className="text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 disabled:opacity-40 transition-colors whitespace-nowrap"
+        >
+          Deselect all
+        </button>
+      ) : null}
 
       {/* Divider */}
       <span className="w-px h-5 bg-border dark:bg-dark-border" />

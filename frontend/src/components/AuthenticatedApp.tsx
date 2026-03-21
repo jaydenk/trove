@@ -58,6 +58,7 @@ export default function AuthenticatedApp({
   const [selectedLinkIds, setSelectedLinkIds] = useState<Set<string>>(
     new Set(),
   );
+  const [bulkModeActive, setBulkModeActive] = useState(false);
 
   // Keyboard navigation (Task 6)
   const [focusedLinkIndex, setFocusedLinkIndex] = useState<number>(-1);
@@ -189,6 +190,7 @@ export default function AuthenticatedApp({
     setSelectedLinkId(null);
     setShowSettings(false);
     setSelectedLinkIds(new Set());
+    setBulkModeActive(false);
     setFocusedLinkIndex(-1);
     setIsMobileSidebarOpen(false);
   };
@@ -200,6 +202,7 @@ export default function AuthenticatedApp({
     setSelectedLinkId(null);
     setShowSettings(false);
     setSelectedLinkIds(new Set());
+    setBulkModeActive(false);
     setFocusedLinkIndex(-1);
     setIsMobileSidebarOpen(false);
   };
@@ -269,12 +272,14 @@ export default function AuthenticatedApp({
 
   const clearSelection = useCallback(() => {
     setSelectedLinkIds(new Set());
+    setBulkModeActive(false);
   }, []);
 
   const handleBulkArchive = useCallback(async () => {
     const ids = Array.from(selectedLinkIds);
     await api.links.bulkArchive(ids);
     setSelectedLinkIds(new Set());
+    setBulkModeActive(false);
     refetchLinks();
     refetchCollections();
   }, [selectedLinkIds, refetchLinks, refetchCollections]);
@@ -283,6 +288,7 @@ export default function AuthenticatedApp({
     const ids = Array.from(selectedLinkIds);
     await api.links.bulkDelete(ids);
     setSelectedLinkIds(new Set());
+    setBulkModeActive(false);
     refetchLinks();
     refetchCollections();
   }, [selectedLinkIds, refetchLinks, refetchCollections]);
@@ -294,11 +300,33 @@ export default function AuthenticatedApp({
         collectionId: collectionId || undefined,
       });
       setSelectedLinkIds(new Set());
+      setBulkModeActive(false);
       refetchLinks();
       refetchCollections();
     },
     [selectedLinkIds, refetchLinks, refetchCollections],
   );
+
+  const handleLongPress = useCallback(
+    (id: string) => {
+      setBulkModeActive(true);
+      setSelectedLinkIds((prev) => {
+        const next = new Set(prev);
+        next.add(id);
+        return next;
+      });
+    },
+    [],
+  );
+
+  const handleSelectAll = useCallback(() => {
+    const allIds = new Set(links.map((l) => l.id));
+    setSelectedLinkIds(allIds);
+  }, [links]);
+
+  const handleDeselectAll = useCallback(() => {
+    setSelectedLinkIds(new Set());
+  }, []);
 
   // -----------------------------------------------------------------------
   // Context menu handlers
@@ -439,8 +467,9 @@ export default function AuthenticatedApp({
         case "Escape":
           if (contextMenu) {
             setContextMenu(null);
-          } else if (selectedLinkIds.size > 0) {
+          } else if (bulkModeActive || selectedLinkIds.size > 0) {
             setSelectedLinkIds(new Set());
+            setBulkModeActive(false);
           } else if (selectedLinkId) {
             setSelectedLinkId(null);
           }
@@ -468,6 +497,7 @@ export default function AuthenticatedApp({
           break;
         case "x":
           if (focusedLink) {
+            if (!bulkModeActive) setBulkModeActive(true);
             toggleLinkSelection(focusedLink.id);
           }
           break;
@@ -554,6 +584,7 @@ export default function AuthenticatedApp({
     focusedLinkIndex,
     selectedLinkId,
     selectedLinkIds,
+    bulkModeActive,
     toggleLinkSelection,
     executablePlugins,
     contextMenu,
@@ -598,7 +629,7 @@ export default function AuthenticatedApp({
     return "All Links";
   })();
 
-  const isBulkMode = selectedLinkIds.size > 0;
+  const isBulkMode = bulkModeActive || selectedLinkIds.size > 0;
 
   return (
     <div className="flex h-dvh bg-surface dark:bg-dark overflow-x-hidden">
@@ -648,6 +679,8 @@ export default function AuthenticatedApp({
             onToggleSidebar={() => setIsMobileSidebarOpen((v) => !v)}
             onOpenAddModal={() => setIsAddModalOpen(true)}
             currentView="Settings"
+            bulkModeActive={false}
+            onToggleBulkMode={() => {}}
           />
           <SettingsView
             collections={collections}
@@ -678,6 +711,15 @@ export default function AuthenticatedApp({
               setPage(1);
               setSelectedLinkId(null);
             }}
+            bulkModeActive={bulkModeActive}
+            onToggleBulkMode={() => {
+              if (bulkModeActive) {
+                setSelectedLinkIds(new Set());
+                setBulkModeActive(false);
+              } else {
+                setBulkModeActive(true);
+              }
+            }}
           />
 
           {/* Desktop header */}
@@ -691,20 +733,44 @@ export default function AuthenticatedApp({
                 setSelectedLinkId(null);
               }}
             />
-            <button
-              type="button"
-              onClick={() => setIsAddModalOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-md bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 px-3 py-1.5 text-sm font-medium hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors"
-            >
-              <svg
-                className="h-4 w-4"
-                viewBox="0 0 20 20"
-                fill="currentColor"
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (bulkModeActive) {
+                    setSelectedLinkIds(new Set());
+                    setBulkModeActive(false);
+                  } else {
+                    setBulkModeActive(true);
+                  }
+                }}
+                className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                  bulkModeActive
+                    ? "bg-neutral-200 dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 hover:bg-neutral-300 dark:hover:bg-neutral-600"
+                    : "border border-border dark:border-dark-border text-neutral-600 dark:text-neutral-400 hover:bg-hover dark:hover:bg-dark-hover"
+                }`}
               >
-                <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
-              </svg>
-              Add
-            </button>
+                {/* Checkbox list icon */}
+                <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M3.5 2A1.5 1.5 0 002 3.5v3A1.5 1.5 0 003.5 8h3A1.5 1.5 0 008 6.5v-3A1.5 1.5 0 006.5 2h-3zm3.354 1.854a.5.5 0 00-.708-.708L4.5 4.793l-.646-.647a.5.5 0 10-.708.708l1 1a.5.5 0 00.708 0l2-2zM10.5 4a.75.75 0 000 1.5h6a.75.75 0 000-1.5h-6zM10.5 14.5a.75.75 0 000 1.5h6a.75.75 0 000-1.5h-6zM10.5 9.25a.75.75 0 000 1.5h6a.75.75 0 000-1.5h-6zM3.5 12A1.5 1.5 0 002 13.5v3A1.5 1.5 0 003.5 18h3A1.5 1.5 0 008 16.5v-3A1.5 1.5 0 006.5 12h-3zm3.354 1.854a.5.5 0 00-.708-.708L4.5 14.793l-.646-.647a.5.5 0 10-.708.708l1 1a.5.5 0 00.708 0l2-2zM3.5 7A1.5 1.5 0 002 8.5v3A1.5 1.5 0 003.5 13h3A1.5 1.5 0 008 11.5v-3A1.5 1.5 0 006.5 7h-3z" clipRule="evenodd" />
+                </svg>
+                {bulkModeActive ? "Cancel" : "Select"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsAddModalOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-md bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 px-3 py-1.5 text-sm font-medium hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors"
+              >
+                <svg
+                  className="h-4 w-4"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+                </svg>
+                Add
+              </button>
+            </div>
           </header>
 
           <main className="flex-1 overflow-y-auto">
@@ -749,6 +815,7 @@ export default function AuthenticatedApp({
                       isSelectable={isBulkMode}
                       isChecked={selectedLinkIds.has(link.id)}
                       onToggleSelect={() => toggleLinkSelection(link.id)}
+                      onLongPress={() => handleLongPress(link.id)}
                       onContextMenu={handleContextMenu}
                       onArchive={handleContextArchive}
                       onDelete={handleContextDelete}
@@ -860,11 +927,14 @@ export default function AuthenticatedApp({
       {isBulkMode && (
         <BulkActionBar
           selectedCount={selectedLinkIds.size}
+          totalCount={links.length}
           collections={collections}
           onArchive={handleBulkArchive}
           onDelete={handleBulkDelete}
           onMoveToCollection={handleBulkMoveToCollection}
           onClearSelection={clearSelection}
+          onSelectAll={handleSelectAll}
+          onDeselectAll={handleDeselectAll}
         />
       )}
 

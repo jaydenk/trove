@@ -12,6 +12,7 @@ type ThemePreference = "light" | "dark" | "system";
 interface SettingsViewProps {
   collections: Collection[];
   onRefreshCollections: () => void;
+  onRefreshLinks: () => void;
   onRefreshPlugins: () => void;
   onClose: () => void;
   theme: ThemePreference;
@@ -29,6 +30,7 @@ type SettingsTab = "account" | "appearance" | "collections" | "plugins" | "impor
 export default function SettingsView({
   collections,
   onRefreshCollections,
+  onRefreshLinks,
   onRefreshPlugins,
   onClose,
   theme,
@@ -195,7 +197,10 @@ export default function SettingsView({
         <UserManagement currentUser={user} />
       ) : (
         <ImportExportSettings
-          onImportComplete={onRefreshCollections}
+          onImportComplete={() => {
+            onRefreshCollections();
+            onRefreshLinks();
+          }}
         />
       )}
     </div>

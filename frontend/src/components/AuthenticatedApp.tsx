@@ -652,6 +652,7 @@ export default function AuthenticatedApp({
           <SettingsView
             collections={collections}
             onRefreshCollections={refetchCollections}
+            onRefreshLinks={refetchLinks}
             onRefreshPlugins={refetchPlugins}
             onClose={() => setShowSettings(false)}
             theme={theme}

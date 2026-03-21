@@ -117,6 +117,15 @@ export function runMigrations(db: Database): void {
     );
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_preferences (
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      key     TEXT NOT NULL,
+      value   TEXT NOT NULL,
+      PRIMARY KEY (user_id, key)
+    );
+  `);
+
   // Migration: add username + password_hash columns to users table
   const userColumns = db
     .query<{ name: string }, []>("PRAGMA table_info(users)")

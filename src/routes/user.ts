@@ -8,6 +8,10 @@ import {
   regenerateToken,
   findByUsername,
 } from "../db/queries/users";
+import {
+  getPreferences,
+  setPreferences,
+} from "../db/queries/preferences";
 import { ValidationError } from "../lib/errors";
 
 const user = new Hono<{ Variables: AppVariables }>();
@@ -100,6 +104,35 @@ user.post("/api/me/regenerate-token", (c) => {
   const newToken = regenerateToken(db, currentUser.id);
 
   return c.json({ token: newToken });
+});
+
+user.get("/api/me/preferences", (c) => {
+  const db = getDb();
+  const currentUser = c.get("user");
+  const prefs = getPreferences(db, currentUser.id);
+
+  return c.json(prefs);
+});
+
+user.patch("/api/me/preferences", async (c) => {
+  const body = await c.req.json<Record<string, string>>();
+
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    throw new ValidationError("Body must be a JSON object of key-value pairs");
+  }
+
+  for (const [key, value] of Object.entries(body)) {
+    if (typeof key !== "string" || typeof value !== "string") {
+      throw new ValidationError("All keys and values must be strings");
+    }
+  }
+
+  const db = getDb();
+  const currentUser = c.get("user");
+  setPreferences(db, currentUser.id, body);
+
+  const updated = getPreferences(db, currentUser.id);
+  return c.json(updated);
 });
 
 export default user;

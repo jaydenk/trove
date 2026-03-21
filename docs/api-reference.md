@@ -118,6 +118,28 @@ Each event includes `{ linkId, timestamp }` as JSON data. A heartbeat is sent ev
 | `GET` | `/api/me` | Yes | Get current user (includes username) |
 | `PATCH` | `/api/me` | Yes | Update name, email, username, or password |
 | `POST` | `/api/me/regenerate-token` | Yes | Generate a new API token |
+| `GET` | `/api/me/preferences` | Yes | Get all user preferences |
+| `PATCH` | `/api/me/preferences` | Yes | Upsert user preferences |
+
+#### GET /api/me/preferences
+
+Returns all preferences for the authenticated user as a flat `Record<string, string>`:
+
+```json
+{ "theme": "dark", "swipe_left": "archive", "swipe_right": "delete" }
+```
+
+Returns `{}` if no preferences have been set.
+
+#### PATCH /api/me/preferences
+
+Accepts a flat `Record<string, string>` body. Each key-value pair is upserted; existing preferences not present in the request body are preserved.
+
+```json
+{ "theme": "system", "swipe_left": "none" }
+```
+
+Returns all preferences (including unchanged ones) after the update.
 
 ---
 

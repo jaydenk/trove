@@ -274,6 +274,15 @@ export const api = {
   regenerateToken: () =>
     request<{ token: string }>("/me/regenerate-token", { method: "POST" }),
 
+  preferences: {
+    get: () => request<Record<string, string>>("/me/preferences"),
+    set: (prefs: Record<string, string>) =>
+      request<Record<string, string>>("/me/preferences", {
+        method: "PATCH",
+        body: JSON.stringify(prefs),
+      }),
+  },
+
   links: {
     list: (params?: ListLinksParams) =>
       request<PaginatedResponse<Link>>(

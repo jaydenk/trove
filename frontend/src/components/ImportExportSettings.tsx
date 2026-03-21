@@ -53,6 +53,14 @@ interface ImportResult {
   detectedFormat: string;
 }
 
+interface ImportProgress {
+  current: number;
+  total: number;
+  imported: number;
+  skipped: number;
+  errors: string[];
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -85,6 +93,7 @@ export default function ImportExportSettings({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewing, setPreviewing] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState<ImportProgress | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
 
@@ -172,22 +181,43 @@ export default function ImportExportSettings({
     setImporting(true);
     setImportError(null);
     setImportResult(null);
+    setImportProgress(null);
+
+    const itemsToImport = previewItems.filter((_, i) =>
+      selectedIndices.has(i),
+    );
+    const batchSize = 5;
+    const total = itemsToImport.length;
+    let imported = 0;
+    let skipped = 0;
+    const allErrors: string[] = [];
+
+    setImportProgress({ current: 0, total, imported: 0, skipped: 0, errors: [] });
 
     try {
-      const itemsToImport = previewItems.filter((_, i) =>
-        selectedIndices.has(i),
-      );
-      const result = await api.importExport.importItems(itemsToImport);
-      setImportResult(result);
+      for (let i = 0; i < total; i += batchSize) {
+        const batch = itemsToImport.slice(i, i + batchSize);
+        const result = await api.importExport.importItems(batch);
+        imported += result.imported;
+        skipped += result.skipped;
+        allErrors.push(...result.errors);
+
+        const current = Math.min(i + batchSize, total);
+        setImportProgress({ current, total, imported, skipped, errors: [...allErrors] });
+      }
+
+      setImportResult({ imported, skipped, errors: allErrors, detectedFormat: "preview" });
+      setImportProgress(null);
       clearPreview();
       setSelectedFile(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
-      if (result.imported > 0) {
+      if (imported > 0) {
         onImportComplete?.();
       }
     } catch (err) {
+      setImportProgress(null);
       if (err instanceof ApiError) {
         setImportError(err.message);
       } else {
@@ -400,28 +430,68 @@ export default function ImportExportSettings({
                   })}
                 </div>
 
+                {/* Progress bar (shown during import) */}
+                {importProgress && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs text-neutral-700 dark:text-neutral-300">
+                      <span>
+                        Importing... {importProgress.current} of {importProgress.total}
+                        {importProgress.total > 0 && (
+                          <> ({Math.round((importProgress.current / importProgress.total) * 100)}%)</>
+                        )}
+                      </span>
+                      <span className="text-muted dark:text-dark-muted">
+                        Imported: {importProgress.imported} | Skipped: {importProgress.skipped}
+                      </span>
+                    </div>
+                    <div className="w-full bg-neutral-200 dark:bg-neutral-700 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="bg-green-500 h-2 rounded-full transition-all duration-300 ease-out"
+                        style={{
+                          width: importProgress.total > 0
+                            ? `${(importProgress.current / importProgress.total) * 100}%`
+                            : "0%",
+                        }}
+                      />
+                    </div>
+                    {importProgress.errors.length > 0 && (
+                      <div className="rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-3 py-2">
+                        <ul className="space-y-0.5">
+                          {importProgress.errors.map((err, i) => (
+                            <li
+                              key={i}
+                              className="text-xs text-amber-700 dark:text-amber-400"
+                            >
+                              {err}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Action buttons */}
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleImportSelected}
-                    disabled={importing || selectedCount === 0}
-                    className={btnPrimary}
-                  >
-                    {importing && <Spinner className="h-3 w-3" />}
-                    {importing
-                      ? "Importing..."
-                      : `Import ${selectedCount} item${selectedCount !== 1 ? "s" : ""}`}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={resetAll}
-                    disabled={importing}
-                    className={btnDanger}
-                  >
-                    Cancel
-                  </button>
-                </div>
+                {!importProgress && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleImportSelected}
+                      disabled={importing || selectedCount === 0}
+                      className={btnPrimary}
+                    >
+                      {`Import ${selectedCount} item${selectedCount !== 1 ? "s" : ""}`}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={resetAll}
+                      disabled={importing}
+                      className={btnDanger}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 

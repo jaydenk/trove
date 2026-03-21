@@ -414,14 +414,16 @@ export const api = {
   },
 
   importExport: {
-    import: (format: "html" | "csv" | "json", data: string) =>
-      request<{ imported: number; skipped: number; errors: string[] }>(
-        "/import",
-        {
-          method: "POST",
-          body: JSON.stringify({ format, data }),
-        },
-      ),
+    import: (data: string) =>
+      request<{
+        imported: number;
+        skipped: number;
+        errors: string[];
+        detectedFormat: "html" | "json" | "csv" | "text";
+      }>("/import", {
+        method: "POST",
+        body: JSON.stringify({ data }),
+      }),
   },
 };
 

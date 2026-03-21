@@ -37,32 +37,23 @@ interface ImportExportSettingsProps {
   onImportComplete?: () => void;
 }
 
-type ImportFormat = "html" | "csv" | "json";
-
 interface ImportResult {
   imported: number;
   skipped: number;
   errors: string[];
+  detectedFormat: "html" | "json" | "csv" | "text";
 }
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function detectFormat(filename: string): ImportFormat | null {
-  const ext = filename.split(".").pop()?.toLowerCase();
-  switch (ext) {
-    case "html":
-    case "htm":
-      return "html";
-    case "csv":
-      return "csv";
-    case "json":
-      return "json";
-    default:
-      return null;
-  }
-}
+const FORMAT_LABELS: Record<string, string> = {
+  html: "HTML bookmarks",
+  json: "JSON",
+  csv: "CSV/TSV",
+  text: "Plain text",
+};
 
 // ---------------------------------------------------------------------------
 // Component
@@ -95,21 +86,13 @@ export default function ImportExportSettings({
   async function handleImport() {
     if (!selectedFile) return;
 
-    const format = detectFormat(selectedFile.name);
-    if (!format) {
-      setImportError(
-        "Unsupported file type. Please select a .html, .csv, or .json file."
-      );
-      return;
-    }
-
     setImporting(true);
     setImportResult(null);
     setImportError(null);
 
     try {
       const data = await selectedFile.text();
-      const result = await api.importExport.import(format, data);
+      const result = await api.importExport.import(data);
       setImportResult(result);
       setSelectedFile(null);
       if (fileInputRef.current) {
@@ -169,15 +152,15 @@ export default function ImportExportSettings({
         <div>
           <h3 className={sectionTitle}>Import</h3>
           <p className={sectionDesc}>
-            Import links from a browser bookmark export (.html), a spreadsheet
-            (.csv), or a Trove JSON export (.json).
+            Import links from any file — browser bookmarks, spreadsheets, JSON
+            exports, or plain text with URLs. The format is auto-detected.
           </p>
 
           <div className="mt-3 space-y-3">
             <input
               ref={fileInputRef}
               type="file"
-              accept=".html,.htm,.csv,.json"
+              accept=".html,.htm,.csv,.tsv,.json,.txt,.md"
               onChange={handleFileSelect}
               className="block w-full text-sm text-muted dark:text-dark-muted file:mr-3 file:rounded-md file:border file:border-border dark:file:border-dark-border file:bg-surface dark:file:bg-dark file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-neutral-900 dark:file:text-neutral-100 file:cursor-pointer hover:file:bg-neutral-50 dark:hover:file:bg-neutral-800 file:transition-colors"
             />
@@ -204,7 +187,8 @@ export default function ImportExportSettings({
             {importResult && (
               <div className="rounded-md bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 px-3 py-2">
                 <p className="text-sm text-green-700 dark:text-green-400">
-                  Imported {importResult.imported} link
+                  Detected format: {FORMAT_LABELS[importResult.detectedFormat] ?? importResult.detectedFormat}.
+                  {" "}Imported {importResult.imported} link
                   {importResult.imported !== 1 ? "s" : ""}
                   {importResult.skipped > 0 && (
                     <>, skipped {importResult.skipped} duplicate

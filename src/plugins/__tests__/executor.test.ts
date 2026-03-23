@@ -279,7 +279,9 @@ describe("plugin executor", () => {
 
       const result = await executeHealthCheck(hc, {});
       expect(result.status).toBe("error");
-      expect(result.message).toContain("401");
+      if (result.status === "error") {
+        expect(result.message).toContain("401");
+      }
     });
 
     test("returns error on network failure", async () => {
@@ -293,7 +295,9 @@ describe("plugin executor", () => {
 
       const result = await executeHealthCheck(hc, {});
       expect(result.status).toBe("error");
-      expect(result.message).toContain("fetch failed");
+      if (result.status === "error") {
+        expect(result.message).toContain("fetch failed");
+      }
     });
 
     test("interpolates config in URL and headers", async () => {

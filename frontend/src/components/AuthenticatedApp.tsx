@@ -99,6 +99,8 @@ export default function AuthenticatedApp({
   const [theme, setThemeState] = useState<"light" | "dark" | "system">("system");
   const [swipeLeftAction, setSwipeLeftState] = useState<SwipeAction>("delete");
   const [swipeRightAction, setSwipeRightState] = useState<SwipeAction>("archive");
+  const [viewMode, setViewModeState] = useState<"condensed" | "expanded">("condensed");
+  const [showImages, setShowImagesState] = useState(true);
   const [prefsLoaded, setPrefsLoaded] = useState(false);
 
   // Load preferences from the server on mount
@@ -113,6 +115,12 @@ export default function AuthenticatedApp({
       }
       if (prefs.swipe_right) {
         setSwipeRightState(prefs.swipe_right as SwipeAction);
+      }
+      if (prefs.view_mode === "condensed" || prefs.view_mode === "expanded") {
+        setViewModeState(prefs.view_mode);
+      }
+      if (prefs.show_images !== undefined) {
+        setShowImagesState(prefs.show_images === "true" || prefs.show_images === true);
       }
       setPrefsLoaded(true);
 
@@ -139,6 +147,16 @@ export default function AuthenticatedApp({
   const setSwipeRightAction = useCallback((value: SwipeAction) => {
     setSwipeRightState(value);
     api.preferences.set({ swipe_right: value }).catch(() => {});
+  }, []);
+
+  const setViewMode = useCallback((value: "condensed" | "expanded") => {
+    setViewModeState(value);
+    api.preferences.set({ view_mode: value }).catch(() => {});
+  }, []);
+
+  const setShowImages = useCallback((value: boolean) => {
+    setShowImagesState(value);
+    api.preferences.set({ show_images: String(value) }).catch(() => {});
   }, []);
 
   // Apply theme to the document
@@ -777,6 +795,10 @@ export default function AuthenticatedApp({
             swipeRightAction={swipeRightAction}
             onSwipeLeftChange={setSwipeLeftAction}
             onSwipeRightChange={setSwipeRightAction}
+            viewMode={viewMode}
+            showImages={showImages}
+            onViewModeChange={setViewMode}
+            onShowImagesChange={setShowImages}
             initialTab={settingsInitialTab}
           />
         </div>
@@ -935,6 +957,8 @@ export default function AuthenticatedApp({
                           swipeLeftAction={swipeLeftAction}
                           swipeRightAction={swipeRightAction}
                           onSwipeAction={handleSwipeAction}
+                          viewMode={viewMode}
+                          showImages={showImages}
                         />
                         {/* FTS snippets use dangerouslySetInnerHTML because SQLite
                             snippet() returns <b> tags for match highlighting.

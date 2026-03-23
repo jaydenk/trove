@@ -25,6 +25,10 @@ interface SettingsViewProps {
   swipeRightAction: SwipeAction;
   onSwipeLeftChange: (action: SwipeAction) => void;
   onSwipeRightChange: (action: SwipeAction) => void;
+  viewMode: "condensed" | "expanded";
+  showImages: boolean;
+  onViewModeChange: (mode: "condensed" | "expanded") => void;
+  onShowImagesChange: (show: boolean) => void;
   initialTab?: SettingsTab;
 }
 
@@ -44,6 +48,10 @@ export default function SettingsView({
   swipeRightAction,
   onSwipeLeftChange,
   onSwipeRightChange,
+  viewMode,
+  showImages,
+  onViewModeChange,
+  onShowImagesChange,
   initialTab,
 }: SettingsViewProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab ?? "appearance");
@@ -171,6 +179,55 @@ export default function SettingsView({
                   {opt}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Layout */}
+          <div>
+            <h3 className="text-sm font-medium text-neutral-900 dark:text-neutral-100 mb-3">
+              Layout
+            </h3>
+            <div className="space-y-4">
+              <div className="inline-flex rounded-md border border-border dark:border-dark-border overflow-hidden">
+                {(["condensed", "expanded"] as const).map((opt) => (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => onViewModeChange(opt)}
+                    className={`px-3 py-1.5 text-sm font-medium transition-colors capitalize ${
+                      viewMode === opt
+                        ? "bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900"
+                        : "text-neutral-600 dark:text-neutral-400 hover:bg-hover dark:hover:bg-dark-hover"
+                    }`}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+              {viewMode === "expanded" && (
+                <div className="flex items-center justify-between max-w-sm">
+                  <label className="text-sm text-neutral-700 dark:text-neutral-300">
+                    Show image thumbnails
+                  </label>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={showImages}
+                    onClick={() => onShowImagesChange(!showImages)}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                      showImages
+                        ? "bg-neutral-900 dark:bg-neutral-100"
+                        : "bg-neutral-300 dark:bg-neutral-600"
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white dark:bg-neutral-900 shadow transition-transform ${
+                        showImages ? "translate-x-4" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 

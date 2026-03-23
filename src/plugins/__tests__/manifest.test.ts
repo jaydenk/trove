@@ -254,4 +254,92 @@ describe("manifest validation", () => {
     expect(validateManifest(42).valid).toBe(false);
     expect(validateManifest([]).valid).toBe(false);
   });
+
+  test("validates a valid file-write manifest", () => {
+    const result = validateManifest({
+      id: "obsidian",
+      name: "Obsidian",
+      direction: "export",
+      execute: {
+        type: "file-write",
+        actionLabel: "Save to Obsidian",
+        directory: "{{config.VAULT_PATH}}",
+        filename: "{{link.title}}.md",
+        content: "# {{link.title}}",
+      },
+    });
+    expect(result.valid).toBe(true);
+  });
+
+  test("rejects file-write missing directory", () => {
+    const result = validateManifest({
+      id: "bad",
+      name: "Bad",
+      direction: "export",
+      execute: {
+        type: "file-write",
+        actionLabel: "Save",
+        filename: "test.md",
+        content: "hello",
+      },
+    });
+    expect(result.valid).toBe(false);
+    if (!result.valid) {
+      expect(result.errors.some((e) => e.includes("directory"))).toBe(true);
+    }
+  });
+
+  test("rejects file-write missing filename", () => {
+    const result = validateManifest({
+      id: "bad",
+      name: "Bad",
+      direction: "export",
+      execute: {
+        type: "file-write",
+        actionLabel: "Save",
+        directory: "/tmp",
+        content: "hello",
+      },
+    });
+    expect(result.valid).toBe(false);
+    if (!result.valid) {
+      expect(result.errors.some((e) => e.includes("filename"))).toBe(true);
+    }
+  });
+
+  test("rejects file-write missing content", () => {
+    const result = validateManifest({
+      id: "bad",
+      name: "Bad",
+      direction: "export",
+      execute: {
+        type: "file-write",
+        actionLabel: "Save",
+        directory: "/tmp",
+        filename: "test.md",
+      },
+    });
+    expect(result.valid).toBe(false);
+    if (!result.valid) {
+      expect(result.errors.some((e) => e.includes("content"))).toBe(true);
+    }
+  });
+
+  test("rejects file-write missing actionLabel", () => {
+    const result = validateManifest({
+      id: "bad",
+      name: "Bad",
+      direction: "export",
+      execute: {
+        type: "file-write",
+        directory: "/tmp",
+        filename: "test.md",
+        content: "hello",
+      },
+    });
+    expect(result.valid).toBe(false);
+    if (!result.valid) {
+      expect(result.errors.some((e) => e.includes("actionLabel"))).toBe(true);
+    }
+  });
 });

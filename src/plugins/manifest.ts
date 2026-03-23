@@ -20,7 +20,7 @@ export interface PluginConfigField {
   required: boolean;
 }
 
-export type ExecuteBlock = ApiCallExecute | UrlRedirectExecute;
+export type ExecuteBlock = ApiCallExecute | UrlRedirectExecute | FileWriteExecute;
 
 export interface ApiCallExecute {
   type: "api-call";
@@ -36,6 +36,16 @@ export interface UrlRedirectExecute {
   type: "url-redirect";
   actionLabel: string;
   urlTemplate: string;
+}
+
+export interface FileWriteExecute {
+  type: "file-write";
+  actionLabel: string;
+  directory: string;
+  filename: string;
+  content: string;
+  mode?: "create" | "overwrite";
+  successMessage?: string;
 }
 
 export interface IngestBlock {
@@ -101,13 +111,13 @@ export function validateManifest(json: unknown): ValidationResult {
       );
     } else {
       const exec = obj.execute as Record<string, unknown>;
-      const validExecTypes = ["api-call", "url-redirect"];
+      const validExecTypes = ["api-call", "url-redirect", "file-write"];
       if (
         typeof exec.type !== "string" ||
         !validExecTypes.includes(exec.type)
       ) {
         errors.push(
-          "execute.type must be 'api-call' or 'url-redirect'"
+          "execute.type must be 'api-call', 'url-redirect', or 'file-write'"
         );
       } else if (exec.type === "api-call") {
         if (typeof exec.method !== "string" || exec.method.length === 0) {
@@ -138,6 +148,19 @@ export function validateManifest(json: unknown): ValidationResult {
           errors.push(
             "execute.actionLabel is required for url-redirect"
           );
+        }
+      } else if (exec.type === "file-write") {
+        if (typeof exec.actionLabel !== "string" || exec.actionLabel.length === 0) {
+          errors.push("execute.actionLabel is required for file-write");
+        }
+        if (typeof exec.directory !== "string" || exec.directory.length === 0) {
+          errors.push("execute.directory is required for file-write");
+        }
+        if (typeof exec.filename !== "string" || exec.filename.length === 0) {
+          errors.push("execute.filename is required for file-write");
+        }
+        if (typeof exec.content !== "string") {
+          errors.push("execute.content is required for file-write");
         }
       }
     }

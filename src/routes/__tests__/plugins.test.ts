@@ -92,6 +92,14 @@ const n8nManifest = {
   },
 };
 
+const readerWithHealthCheck = {
+  ...readerManifest,
+  healthCheck: {
+    url: "https://readwise.io/api/v3/me/",
+    headers: { Authorization: "Token {{config.READWISE_TOKEN}}" },
+  },
+};
+
 describe("plugin routes", () => {
   let db: Database;
   let userToken: string;
@@ -588,6 +596,110 @@ describe("plugin routes", () => {
       const body = await res.json();
       expect(body.error.code).toBe("VALIDATION_ERROR");
       expect(body.error.message).toContain("ingest");
+    });
+  });
+
+  describe("POST /api/plugins/:id/health-check", () => {
+    test("returns ok for valid health check", async () => {
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = mock(() =>
+        Promise.resolve(new Response("ok", { status: 200 }))
+      ) as any;
+
+      try {
+        insertPlugin(db, readerWithHealthCheck as any, true);
+        enablePluginForUser(db, userId, "reader");
+        setPluginConfig(db, userId, "reader", { READWISE_TOKEN: "test-token" });
+
+        const app = createApp();
+        const res = await app.request("/api/plugins/reader/health-check", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${userToken}` },
+        });
+
+        expect(res.status).toBe(200);
+        const body = await res.json();
+        expect(body.status).toBe("ok");
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+
+    test("returns 400 for plugin without healthCheck", async () => {
+      insertPlugin(db, thingsManifest, true);
+      enablePluginForUser(db, userId, "things");
+
+      const app = createApp();
+      const res = await app.request("/api/plugins/things/health-check", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+
+      expect(res.status).toBe(400);
+    });
+
+    test("returns 404 for unknown plugin", async () => {
+      const app = createApp();
+      const res = await app.request("/api/plugins/nonexistent/health-check", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+
+      expect(res.status).toBe(404);
+    });
+  });
+
+  describe("POST /api/plugins/:id/test", () => {
+    test("returns redirect result for url-redirect plugin", async () => {
+      insertPlugin(db, thingsManifest, true);
+      enablePluginForUser(db, userId, "things");
+
+      const app = createApp();
+      const res = await app.request("/api/plugins/things/test", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.type).toBe("redirect");
+      expect(body.url).toContain("things:///add");
+      expect(body.url).toContain("Trove%20Test");
+    });
+
+    test("returns error for plugin without execute block", async () => {
+      const ingestOnly = {
+        id: "ingest-only",
+        name: "Ingest",
+        direction: "ingest" as const,
+        ingest: { itemMapping: { url: "$.url" } },
+      };
+      insertPlugin(db, ingestOnly as any, false);
+      enablePluginForUser(db, userId, "ingest-only");
+
+      const app = createApp();
+      const res = await app.request("/api/plugins/ingest-only/test", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+
+      expect(res.status).toBe(400);
+    });
+
+    test("does not record action in link_actions", async () => {
+      insertPlugin(db, thingsManifest, true);
+      enablePluginForUser(db, userId, "things");
+
+      const app = createApp();
+      await app.request("/api/plugins/things/test", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+
+      const actions = db
+        .query("SELECT COUNT(*) as count FROM link_actions")
+        .get() as { count: number };
+      expect(actions.count).toBe(0);
     });
   });
 

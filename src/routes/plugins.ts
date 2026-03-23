@@ -15,8 +15,7 @@ import { getLink } from "../db/queries/links";
 import { recordAction } from "../db/queries/linkActions";
 import { validateManifest } from "../plugins/manifest";
 import type { PluginManifest } from "../plugins/manifest";
-import { executePlugin } from "../plugins/executor";
-import { handleIngest } from "../plugins/executor";
+import { executePlugin, handleIngest, executeHealthCheck } from "../plugins/executor";
 import type { TemplateContext } from "../plugins/template";
 import {
   NotFoundError,
@@ -79,6 +78,7 @@ function manifestToPluginInfo(
         ? manifest.execute.actionLabel
         : null,
     hasIngest: !!manifest.ingest,
+    hasHealthCheck: !!manifest.healthCheck,
     isConfigured: opts.isConfigured,
     direction: manifest.direction,
     enabled: opts.enabled,
@@ -334,6 +334,85 @@ plugins.post("/api/links/:id/actions/:pluginId", async (c) => {
     status: result.type,
     message,
   });
+
+  return c.json(result);
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/plugins/:id/health-check — Run health check for a plugin
+// ---------------------------------------------------------------------------
+
+plugins.post("/api/plugins/:id/health-check", async (c) => {
+  const db = getDb();
+  const user = c.get("user");
+  const pluginId = c.req.param("id");
+
+  const plugin = getPluginById(db, pluginId);
+  if (!plugin) {
+    throw new NotFoundError("Plugin not found");
+  }
+
+  if (!plugin.manifest.healthCheck) {
+    throw new ValidationError("Plugin does not have a health check");
+  }
+
+  const config = getPluginConfig(db, user.id, pluginId);
+  const result = await executeHealthCheck(plugin.manifest.healthCheck, config);
+
+  return c.json(result);
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/plugins/:id/test — Test execute with synthetic data
+// ---------------------------------------------------------------------------
+
+plugins.post("/api/plugins/:id/test", async (c) => {
+  const db = getDb();
+  const user = c.get("user");
+  const pluginId = c.req.param("id");
+
+  const plugin = getPluginById(db, pluginId);
+  if (!plugin) {
+    throw new NotFoundError("Plugin not found");
+  }
+
+  if (!plugin.manifest.execute) {
+    throw new ValidationError("Plugin does not support execute actions");
+  }
+
+  const config = getPluginConfig(db, user.id, pluginId);
+
+  // Check required config keys
+  const requiredKeys = Object.entries(plugin.manifest.config ?? {})
+    .filter(([, field]) => field.required)
+    .map(([key]) => key);
+  const missingKeys = requiredKeys.filter(
+    (key) => !config[key] || config[key].length === 0
+  );
+  if (missingKeys.length > 0) {
+    throw new ValidationError(
+      `Plugin is not configured. Missing: ${missingKeys.join(", ")}`
+    );
+  }
+
+  // Build synthetic test context
+  const context: TemplateContext = {
+    link: {
+      url: "https://trove.test/plugin-test",
+      title: "[Trove Test] Plugin Verification",
+      description:
+        "This is a test item created by Trove to verify plugin configuration. Safe to delete.",
+      domain: "trove.test",
+      tags: "trove-test",
+      tagsArray: '["trove-test"]',
+      createdAt: new Date().toISOString(),
+    },
+    config,
+  };
+
+  const result = await executePlugin(plugin.manifest, context);
+
+  // Do NOT record action — test executions should not pollute history
 
   return c.json(result);
 });

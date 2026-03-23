@@ -262,8 +262,35 @@ function PluginRow({
               POST /api/plugins/{plugin.id}/webhook
             </p>
           )}
+          {/* Test result feedback (from summary row Test button) */}
+          {testResult && !expanded && (
+            <p
+              className={`mt-1 text-xs ${
+                testResult.type === "success"
+                  ? "text-green-600 dark:text-green-400"
+                  : "text-red-600 dark:text-red-400"
+              }`}
+            >
+              {testResult.type === "success"
+                ? `✓ ${testResult.message}`
+                : `✗ ${testResult.message}`}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {/* Test button — visible in summary row for enabled export plugins */}
+          {plugin.hasExecute && plugin.enabled && plugin.isConfigured && (
+            <button
+              type="button"
+              onClick={handleTest}
+              disabled={testing}
+              className="inline-flex items-center gap-1 rounded-md border border-border dark:border-dark-border text-muted dark:text-dark-muted hover:text-neutral-900 dark:hover:text-neutral-100 px-2 py-1 text-xs font-medium hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              title="Send a test item to verify the plugin works"
+            >
+              {testing ? <Spinner className="h-3 w-3" /> : null}
+              {testing ? "Testing..." : "Test"}
+            </button>
+          )}
           {/* Config expand */}
           {hasConfig && plugin.enabled && (
             <button

@@ -103,14 +103,40 @@ export function interpolate(
 }
 
 /**
+ * Check if a string is exactly a single template expression with no surrounding text.
+ * e.g. "{{link.tagsArray}}" → true, "hello {{link.url}}" → false
+ */
+const SOLE_EXPRESSION_RE = /^\{\{.+?\}\}$/;
+
+/**
  * Recursively interpolate a single value (string, object, array, or primitive).
+ *
+ * When a string value in an object is exactly one template expression (no surrounding
+ * text) and resolves to a valid JSON array or object, the parsed value is returned
+ * instead of the string. This allows template variables like `{{link.tagsArray}}`
+ * to produce actual arrays in API request bodies.
  */
 function interpolateValue(
   value: unknown,
   context: TemplateContext
 ): unknown {
   if (typeof value === "string") {
-    return interpolate(value, context);
+    const result = interpolate(value, context);
+
+    // If the original value was a sole template expression, try to preserve
+    // non-string JSON types (arrays, objects) in the interpolated result.
+    if (SOLE_EXPRESSION_RE.test(value.trim())) {
+      try {
+        const parsed = JSON.parse(result);
+        if (Array.isArray(parsed) || (typeof parsed === "object" && parsed !== null)) {
+          return parsed;
+        }
+      } catch {
+        // Not valid JSON — return as string
+      }
+    }
+
+    return result;
   }
   if (Array.isArray(value)) {
     return value.map((item) => interpolateValue(item, context));

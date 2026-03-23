@@ -249,5 +249,38 @@ describe("template engine", () => {
         "https://example.com/article?q=1&r=2",
       ]);
     });
+
+    test("sole template expression resolving to JSON array produces actual array", () => {
+      const result = interpolateObject(
+        {
+          tags: "{{link.tagsArray}}",
+        },
+        context
+      );
+      // tagsArray is '["dev","reading"]' — should parse to actual array
+      expect(result.tags).toEqual(["dev", "reading"]);
+    });
+
+    test("template expression with surrounding text stays as string", () => {
+      const result = interpolateObject(
+        {
+          label: "Tags: {{link.tagsArray}}",
+        },
+        context
+      );
+      // Has surrounding text — stays as string
+      expect(result.label).toBe('Tags: ["dev","reading"]');
+    });
+
+    test("sole template expression resolving to plain string stays as string", () => {
+      const result = interpolateObject(
+        {
+          url: "{{link.url}}",
+        },
+        context
+      );
+      // URL is a plain string, not JSON array/object — stays as string
+      expect(result.url).toBe("https://example.com/article?q=1&r=2");
+    });
   });
 });

@@ -165,7 +165,7 @@ describe("plugin executor", () => {
         expect(req.headers["content-type"]).toBe("application/json");
         expect(req.body).toEqual({
           url: "https://example.com/article",
-          tags: '["dev","reading"]',
+          tags: ["dev", "reading"],
         });
       } finally {
         globalThis.fetch = originalFetch;

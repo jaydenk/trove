@@ -25,7 +25,9 @@ Trove is a self-hosted link inbox for people who save links from many sources an
 - **Right-click context menu** — archive, delete, send to plugin, or copy URL on desktop
 - **Automatic content extraction** — browser extension captures rendered DOM; server fallback for API saves
 - **Smart import/export** — auto-detects HTML bookmarks, JSON (any structure), CSV/TSV, or plain text; preview and select items before importing; include/exclude tags
+- **Expanded view** — switch between condensed (default) and expanded layouts in Appearance settings; expanded shows a 2-line text excerpt and optional image thumbnails
 - **Dark mode** — light, dark, or system theme in Appearance settings
+- **PWA** — install Trove as a standalone app via Safari's "Add to Dock" (macOS) or "Add to Home Screen" (iOS)
 - **MCP server** — Claude integration via 7 tools for search, browse, and save
 - **Multi-user** — username/password auth, admin management, API tokens
 - **Keyboard shortcuts** — full navigation, actions, and triage mode from the keyboard

@@ -37,7 +37,7 @@ The `direction` field determines what blocks are required:
 
 ## Execute Block
 
-The `execute` block defines how the plugin acts on a link. There are two types:
+The `execute` block defines how the plugin acts on a link. There are three types:
 
 ### `api-call`
 
@@ -69,6 +69,34 @@ Makes an HTTP request to an external API.
 | `headers` | `object` | No | Request headers (supports template variables) |
 | `body` | `object` | No | JSON request body (supports template variables) |
 | `successMessage` | `string` | No | Message shown on success |
+
+### `file-write`
+
+Writes a file to a directory on the server's filesystem. Useful for integrations that read from a local directory (e.g. Obsidian vaults, watched folders).
+
+```json
+{
+  "type": "file-write",
+  "actionLabel": "Save to Vault",
+  "directory": "{{config.VAULT_PATH}}/{{config.SUBFOLDER}}",
+  "filename": "{{link.title|slugify}}.md",
+  "content": "---\nurl: {{link.url}}\ntags: {{link.tagsArray|yamllist}}\ndate: {{link.createdAt}}\n---\n\n# {{link.title}}\n",
+  "mode": "create",
+  "successMessage": "Saved to vault"
+}
+```
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `type` | `"file-write"` | Yes | Execute type identifier |
+| `actionLabel` | `string` | Yes | Button label shown in the UI |
+| `directory` | `string` | Yes | Target directory path (supports template variables) |
+| `filename` | `string` | Yes | Filename including extension (supports template variables) |
+| `content` | `string` | Yes | File content (supports template variables) |
+| `mode` | `"create"` \| `"overwrite"` | No | `create` fails if the file already exists; `overwrite` replaces it. Defaults to `create`. |
+| `successMessage` | `string` | No | Message shown on success |
+
+**Security:** Path traversal sequences (`..`) are rejected. Filenames are sanitised to remove unsafe characters. File content is limited to 1 MB.
 
 ### `url-redirect`
 
@@ -134,6 +162,7 @@ Template expressions use `{{...}}` syntax. Available variables:
 | `{{link.domain}}` | The link's domain |
 | `{{link.tags}}` | Comma-separated tag names |
 | `{{link.tagsArray}}` | JSON array of tag names (e.g. `["dev","reading"]`) |
+| `{{link.createdAt}}` | ISO 8601 UTC timestamp of when the link was saved (e.g. `2026-03-23T04:00:00.000Z`) |
 | `{{config.KEY}}` | User-configured value for `KEY` |
 
 ### Template Filters
@@ -144,6 +173,7 @@ Filters are applied with the pipe syntax: `{{variable|filter}}`.
 | --- | --- |
 | `\|urlencode` | URL-encode the value |
 | `\|json` | JSON-stringify the value |
+| `\|yamllist` | Format an array as a YAML block list (each item on its own line, prefixed with `- `) |
 
 ## Config Schema
 
@@ -267,7 +297,7 @@ The webhook endpoint will be available at `POST /api/plugins/webhook-receiver/we
 
 ## Shipped Plugins
 
-Three plugins ship with Trove as system plugins (cannot be deleted):
+Five plugins ship with Trove as system plugins (cannot be deleted):
 
 ### Readwise Reader
 
@@ -280,6 +310,36 @@ Sends links to [Readwise Reader](https://readwise.io/read) for reading later. Ta
 Creates a task in [Things](https://culturedcode.com/things/) from a link. The link title becomes the task name, the URL goes in the notes, and the task is tagged with `trove`. Uses the Things URL scheme — works on macOS and iOS where Things is installed.
 
 **Configuration:** None required.
+
+### Obsidian
+
+Saves links as Markdown notes in an [Obsidian](https://obsidian.md) vault. Each note is written with YAML frontmatter containing the URL, tags, and creation date, followed by the link title as a heading.
+
+**Configuration:**
+
+| Field | Description |
+| --- | --- |
+| `VAULT_PATH` | Absolute path to your Obsidian vault directory on the server |
+| `SUBFOLDER` | Optional subfolder within the vault (e.g. `Inbox`) |
+
+Notes are written as `<title>.md` inside the configured directory. If a file with the same name already exists, the action returns an error — rename or delete the existing note first.
+
+### Apple Reminders
+
+Creates a reminder from a link using [Apple Shortcuts](https://support.apple.com/guide/shortcuts/welcome/ios). Because Reminders is only available on Apple platforms, this plugin works by calling a named Shortcut on the device, passing the link title and URL as text input. The Shortcut is responsible for creating the reminder.
+
+**Setup:**
+
+1. Create a Shortcut in the Shortcuts app that accepts text input and creates a reminder from it.
+2. Configure the shortcut name in **Settings > Plugins > Apple Reminders**.
+
+**Configuration:**
+
+| Field | Description |
+| --- | --- |
+| `SHORTCUT_NAME` | The exact name of your Shortcut (case-sensitive) |
+
+This plugin uses the `shortcuts://run-shortcut` URL scheme and requires the Shortcuts app to be available on the device triggering the action.
 
 ### n8n Webhook
 

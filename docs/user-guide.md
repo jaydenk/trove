@@ -225,6 +225,24 @@ Replace `YOUR_TROVE_URL` with your Trove instance URL. When clicked, it opens a 
 
 Trove supports light, dark, and system colour schemes. Toggle the theme from **Settings > Appearance**. The preference is stored on the server and syncs across devices.
 
+## Link Card Layout
+
+Trove supports two link card layouts, configurable in **Settings > Appearance**:
+
+- **Condensed** (default) — compact single-line cards showing title, domain, and tags.
+- **Expanded** — taller cards that show a 2-line text excerpt (from the page description or extracted content) and optional image thumbnails where available.
+
+The preference is stored per user and syncs across devices.
+
+## Installing as a Standalone App (PWA)
+
+Trove can be installed as a standalone app on supported platforms, removing the browser chrome and giving it a dedicated icon.
+
+- **macOS** — open Trove in Safari, then choose **File > Add to Dock**.
+- **iOS** — open Trove in Safari, tap the Share button, then tap **Add to Home Screen**.
+
+Once installed, Trove opens in its own window without the browser toolbar.
+
 ## Plugins
 
 Trove uses a declarative JSON plugin system. Plugins can do two things:
@@ -243,7 +261,7 @@ Go to **Settings > Plugins** to view, enable/disable, and configure plugins.
 - **Upload** — admins can upload new plugin manifests (JSON) via the Upload Plugin button.
 - **Delete** — admins can delete non-system plugins.
 
-Three system plugins ship with Trove: **Readwise Reader**, **Things**, and **n8n Webhook**. See the [Plugin Development Guide](plugin-development.md) for creating custom plugins.
+Five system plugins ship with Trove: **Readwise Reader**, **Things**, **Obsidian**, **Apple Reminders**, and **n8n Webhook**. See the [Plugin Development Guide](plugin-development.md) for full details on each, and for creating custom plugins.
 
 ## User Management (Admin)
 

@@ -37,6 +37,7 @@ function buildTemplateContext(
     title: string;
     description: string | null;
     domain: string | null;
+    created_at: string;
     tags: { id: string; name: string }[];
   },
   config: Record<string, string>
@@ -50,6 +51,7 @@ function buildTemplateContext(
       domain: link.domain,
       tags: tagNames.join(", "),
       tagsArray: JSON.stringify(tagNames),
+      createdAt: link.created_at,
     },
     config,
   };

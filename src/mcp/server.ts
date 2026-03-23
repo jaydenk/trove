@@ -442,6 +442,7 @@ server.registerTool(
           domain: link.domain,
           tags: tagNames.join(", "),
           tagsArray: JSON.stringify(tagNames),
+          createdAt: link.created_at,
         },
         config,
       };

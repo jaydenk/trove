@@ -10,6 +10,7 @@ export interface TemplateContext {
     domain: string | null;
     tags: string; // comma-separated
     tagsArray: string; // JSON array string e.g. '["dev","reading"]'
+    createdAt: string;
   };
   config: Record<string, string>;
 }
@@ -21,6 +22,10 @@ export interface TemplateContext {
 const filters: Record<string, (value: string) => string> = {
   urlencode: (v) => encodeURIComponent(v),
   json: (v) => JSON.stringify(v),
+  yamllist: (v) => {
+    if (!v.trim()) return "";
+    return v.split(",").map((t) => `\n  - ${t.trim()}`).join("");
+  },
 };
 
 // ---------------------------------------------------------------------------

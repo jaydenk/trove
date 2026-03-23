@@ -10,6 +10,7 @@ const context: TemplateContext = {
     domain: "example.com",
     tags: "dev, reading",
     tagsArray: '["dev","reading"]',
+    createdAt: "2026-03-23T10:00:00Z",
   },
   config: {
     API_TOKEN: "test-token-abc",
@@ -100,6 +101,33 @@ describe("template engine", () => {
       expect(interpolate("{{link.title|nonexistentfilter}}", context)).toBe(
         "Example Article"
       );
+    });
+
+    test("resolves link.createdAt", () => {
+      expect(interpolate("{{link.createdAt}}", context)).toBe("2026-03-23T10:00:00Z");
+    });
+
+    test("yamllist filter converts comma-separated to YAML list", () => {
+      const result = interpolate("{{link.tags|yamllist}}", context);
+      expect(result).toBe("\n  - dev\n  - reading");
+    });
+
+    test("yamllist filter handles single tag", () => {
+      const ctx: TemplateContext = {
+        ...context,
+        link: { ...context.link, tags: "dev" },
+      };
+      const result = interpolate("{{link.tags|yamllist}}", ctx);
+      expect(result).toBe("\n  - dev");
+    });
+
+    test("yamllist filter handles empty string", () => {
+      const ctx: TemplateContext = {
+        ...context,
+        link: { ...context.link, tags: "" },
+      };
+      const result = interpolate("{{link.tags|yamllist}}", ctx);
+      expect(result).toBe("");
     });
   });
 

@@ -499,16 +499,24 @@ export async function downloadExport(
 
 export function connectSSE(
   onEvent: (event: { type: string; linkId: string; timestamp: string }) => void,
+  onReconnect?: () => void,
 ): () => void {
   const token = getToken();
   if (!token) return () => {};
+
+  let openCount = 0;
 
   const es = new EventSource(
     `/api/events?token=${encodeURIComponent(token)}`,
   );
 
   es.onopen = () => {
+    openCount++;
     console.debug("[Trove SSE] Connected");
+    // On reconnection, refetch to catch events missed while disconnected
+    if (openCount > 1 && onReconnect) {
+      onReconnect();
+    }
   };
 
   const eventTypes = [

@@ -247,17 +247,28 @@ export default function AuthenticatedApp({
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout> | null = null;
 
-    const disconnect = connectSSE(() => {
-      // Debounce: wait 300ms after last event before refetching
+    const debouncedRefetch = () => {
       if (timeout) clearTimeout(timeout);
       timeout = setTimeout(() => {
         refetchLinks();
         refetchCollections();
       }, 300);
-    });
+    };
+
+    const disconnect = connectSSE(debouncedRefetch, debouncedRefetch);
+
+    // Refetch when the tab regains visibility (catches events missed while
+    // the browser suspended this tab — Safari is particularly aggressive)
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        debouncedRefetch();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
       disconnect();
+      document.removeEventListener("visibilitychange", handleVisibility);
       if (timeout) clearTimeout(timeout);
     };
   }, [refetchLinks, refetchCollections]);

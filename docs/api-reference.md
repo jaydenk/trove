@@ -115,6 +115,8 @@ Authentication is via query parameter (EventSource does not support custom heade
 
 Each event includes `{ linkId, timestamp }` as JSON data. A heartbeat is sent every 30 seconds.
 
+The frontend automatically refetches data when an SSE reconnection occurs or when the browser tab regains visibility, ensuring links added while the tab was backgrounded are displayed without a manual refresh.
+
 ---
 
 ### User Profile

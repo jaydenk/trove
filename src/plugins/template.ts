@@ -103,6 +103,25 @@ export function interpolate(
 }
 
 /**
+ * Recursively interpolate a single value (string, object, array, or primitive).
+ */
+function interpolateValue(
+  value: unknown,
+  context: TemplateContext
+): unknown {
+  if (typeof value === "string") {
+    return interpolate(value, context);
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => interpolateValue(item, context));
+  }
+  if (value !== null && typeof value === "object") {
+    return interpolateObject(value as Record<string, unknown>, context);
+  }
+  return value;
+}
+
+/**
  * Recursively interpolate all string values in an object.
  * Returns a new object with all template expressions resolved.
  */
@@ -113,20 +132,7 @@ export function interpolateObject(
   const result: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(obj)) {
-    if (typeof value === "string") {
-      result[key] = interpolate(value, context);
-    } else if (
-      value !== null &&
-      typeof value === "object" &&
-      !Array.isArray(value)
-    ) {
-      result[key] = interpolateObject(
-        value as Record<string, unknown>,
-        context
-      );
-    } else {
-      result[key] = value;
-    }
+    result[key] = interpolateValue(value, context);
   }
 
   return result;

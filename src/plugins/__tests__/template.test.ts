@@ -209,5 +209,45 @@ describe("template engine", () => {
       expect(result.flag).toBe(true);
       expect(result.url).toBe("https://example.com/article?q=1&r=2");
     });
+
+    test("interpolates strings inside arrays", () => {
+      const result = interpolateObject(
+        {
+          items: ["{{link.url}}", "{{link.title}}"],
+        },
+        context
+      );
+      expect(result.items).toEqual([
+        "https://example.com/article?q=1&r=2",
+        "Example Article",
+      ]);
+    });
+
+    test("interpolates nested objects inside arrays", () => {
+      const result = interpolateObject(
+        {
+          data: [{ text: { content: "{{link.title}}" } }],
+        },
+        context
+      );
+      const arr = result.data as Array<Record<string, unknown>>;
+      expect((arr[0].text as Record<string, unknown>).content).toBe(
+        "Example Article"
+      );
+    });
+
+    test("non-string/non-object array items pass through", () => {
+      const result = interpolateObject(
+        {
+          mixed: [42, true, "{{link.url}}"],
+        },
+        context
+      );
+      expect(result.mixed).toEqual([
+        42,
+        true,
+        "https://example.com/article?q=1&r=2",
+      ]);
+    });
   });
 });

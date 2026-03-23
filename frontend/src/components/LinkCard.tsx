@@ -166,6 +166,8 @@ export interface LinkCardProps {
   swipeLeftAction?: SwipeAction;
   swipeRightAction?: SwipeAction;
   onSwipeAction?: (link: Link, action: SwipeAction) => void;
+  viewMode?: "condensed" | "expanded";
+  showImages?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -313,6 +315,8 @@ export default function LinkCard({
   swipeLeftAction = "delete",
   swipeRightAction = "archive",
   onSwipeAction,
+  viewMode = "condensed",
+  showImages = false,
 }: LinkCardProps) {
   const executablePlugins = plugins?.filter(
     (p) => p.hasExecute && p.isConfigured,
@@ -462,81 +466,103 @@ export default function LinkCard({
               : "hover:bg-hover dark:hover:bg-dark-hover"
         }`}
       >
-        {/* Row 1: checkbox + favicon + title + extraction status + plugin actions */}
-        <div className="flex items-center gap-2 min-w-0">
-          {(isSelectable || isChecked) && (
-            <span
-              role="checkbox"
-              aria-checked={isChecked}
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleSelect?.();
-              }}
-              onKeyDown={(e) => {
-                if (e.key === " " || e.key === "Enter") {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  onToggleSelect?.();
-                }
-              }}
-              tabIndex={0}
-              className={`shrink-0 flex items-center justify-center h-4 w-4 rounded border transition-colors cursor-pointer ${
-                isChecked
-                  ? "bg-neutral-900 dark:bg-neutral-100 border-neutral-900 dark:border-neutral-100"
-                  : "border-neutral-400 dark:border-neutral-500 hover:border-neutral-600 dark:hover:border-neutral-300"
-              }`}
-            >
-              {isChecked && (
-                <svg className="h-3 w-3 text-white dark:text-neutral-900" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
-                </svg>
+        <div className={`flex ${viewMode === "expanded" && showImages && link.imageUrl ? "gap-3" : ""}`}>
+          <div className="flex-1 min-w-0">
+            {/* Row 1: checkbox + favicon + title + extraction status + plugin actions */}
+            <div className="flex items-center gap-2 min-w-0">
+              {(isSelectable || isChecked) && (
+                <span
+                  role="checkbox"
+                  aria-checked={isChecked}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleSelect?.();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === " " || e.key === "Enter") {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      onToggleSelect?.();
+                    }
+                  }}
+                  tabIndex={0}
+                  className={`shrink-0 flex items-center justify-center h-4 w-4 rounded border transition-colors cursor-pointer ${
+                    isChecked
+                      ? "bg-neutral-900 dark:bg-neutral-100 border-neutral-900 dark:border-neutral-100"
+                      : "border-neutral-400 dark:border-neutral-500 hover:border-neutral-600 dark:hover:border-neutral-300"
+                  }`}
+                >
+                  {isChecked && (
+                    <svg className="h-3 w-3 text-white dark:text-neutral-900" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </span>
               )}
-            </span>
-          )}
-          {link.faviconUrl ? (
-            <img
-              src={link.faviconUrl}
-              alt=""
-              width={16}
-              height={16}
-              className="shrink-0 rounded-sm"
-            />
-          ) : (
-            <span className="shrink-0 w-4 h-4 rounded-sm bg-border dark:bg-dark-border" />
-          )}
-          <span className="font-medium text-sm text-neutral-900 dark:text-neutral-100 truncate">
-            {link.title || link.url}
-          </span>
-          <ExtractionIcon status={link.extractionStatus} />
-          {executablePlugins && executablePlugins.length > 0 && (
-            <span className="ml-auto flex items-center gap-0.5 shrink-0">
-              {executablePlugins.map((p) => (
-                <PluginActionButton key={p.id} link={link} plugin={p} />
-              ))}
-            </span>
-          )}
-        </div>
-
-        {/* Row 2: domain + relative time */}
-        <div className="mt-0.5 pl-6 flex items-center gap-2 text-xs text-muted dark:text-dark-muted">
-          {link.domain && <span className="truncate">{link.domain}</span>}
-          {link.domain && <span aria-hidden>·</span>}
-          <span className="whitespace-nowrap">{relativeTime(link.createdAt)}</span>
-        </div>
-
-        {/* Row 3: tags */}
-        {link.tags && link.tags.length > 0 && (
-          <div className="mt-1.5 pl-6 flex flex-wrap gap-1">
-            {link.tags.map((tag) => (
-              <span
-                key={tag.id}
-                className="inline-block px-1.5 py-0.5 text-[11px] leading-tight rounded bg-neutral-100 dark:bg-neutral-800 text-muted dark:text-dark-muted"
-              >
-                {tag.name}
+              {link.faviconUrl ? (
+                <img
+                  src={link.faviconUrl}
+                  alt=""
+                  width={16}
+                  height={16}
+                  className="shrink-0 rounded-sm"
+                />
+              ) : (
+                <span className="shrink-0 w-4 h-4 rounded-sm bg-border dark:bg-dark-border" />
+              )}
+              <span className="font-medium text-sm text-neutral-900 dark:text-neutral-100 truncate">
+                {link.title || link.url}
               </span>
-            ))}
+              <ExtractionIcon status={link.extractionStatus} />
+              {executablePlugins && executablePlugins.length > 0 && (
+                <span className="ml-auto flex items-center gap-0.5 shrink-0">
+                  {executablePlugins.map((p) => (
+                    <PluginActionButton key={p.id} link={link} plugin={p} />
+                  ))}
+                </span>
+              )}
+            </div>
+
+            {/* Row 2: domain + relative time */}
+            <div className="mt-0.5 pl-6 flex items-center gap-2 text-xs text-muted dark:text-dark-muted">
+              {link.domain && <span className="truncate">{link.domain}</span>}
+              {link.domain && <span aria-hidden>·</span>}
+              <span className="whitespace-nowrap">{relativeTime(link.createdAt)}</span>
+            </div>
+
+            {/* Expanded view: excerpt */}
+            {viewMode === "expanded" && (link.description || link.content) && (
+              <div className="mt-1.5 pl-6 pr-1">
+                <p className="text-[13px] leading-relaxed text-muted dark:text-dark-muted line-clamp-2">
+                  {link.description || link.content}
+                </p>
+              </div>
+            )}
+
+            {/* Row 3: tags */}
+            {link.tags && link.tags.length > 0 && (
+              <div className="mt-1.5 pl-6 flex flex-wrap gap-1">
+                {link.tags.map((tag) => (
+                  <span
+                    key={tag.id}
+                    className="inline-block px-1.5 py-0.5 text-[11px] leading-tight rounded bg-neutral-100 dark:bg-neutral-800 text-muted dark:text-dark-muted"
+                  >
+                    {tag.name}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
-        )}
+
+          {/* Image thumbnail */}
+          {viewMode === "expanded" && showImages && link.imageUrl && (
+            <img
+              src={link.imageUrl}
+              alt=""
+              className="shrink-0 w-[72px] h-[72px] rounded-md object-cover self-center"
+            />
+          )}
+        </div>
       </button>
     </div>
   );

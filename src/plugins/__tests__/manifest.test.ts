@@ -342,5 +342,143 @@ describe("manifest validation", () => {
       expect(result.errors.some((e) => e.includes("actionLabel"))).toBe(true);
     }
   });
+
+  test("validates manifest with healthCheck block", () => {
+    const result = validateManifest({
+      id: "reader",
+      name: "Reader",
+      direction: "export",
+      execute: {
+        type: "api-call",
+        actionLabel: "Send",
+        method: "POST",
+        url: "https://api.example.com/save",
+      },
+      healthCheck: {
+        url: "https://api.example.com/me",
+        headers: { Authorization: "Bearer {{config.TOKEN}}" },
+        expectedStatus: 200,
+      },
+    });
+    expect(result.valid).toBe(true);
+  });
+
+  test("rejects healthCheck with missing url", () => {
+    const result = validateManifest({
+      id: "bad-hc",
+      name: "Bad",
+      direction: "export",
+      execute: {
+        type: "api-call",
+        actionLabel: "Send",
+        method: "POST",
+        url: "https://api.example.com/save",
+      },
+      healthCheck: {
+        headers: {},
+      },
+    });
+    expect(result.valid).toBe(false);
+    if (!result.valid) {
+      expect(result.errors.some((e) => e.includes("healthCheck.url"))).toBe(true);
+    }
+  });
+
+  test("rejects healthCheck with non-number expectedStatus", () => {
+    const result = validateManifest({
+      id: "bad-hc2",
+      name: "Bad",
+      direction: "export",
+      execute: {
+        type: "api-call",
+        actionLabel: "Send",
+        method: "POST",
+        url: "https://api.example.com/save",
+      },
+      healthCheck: {
+        url: "https://api.example.com/me",
+        expectedStatus: "200",
+      },
+    });
+    expect(result.valid).toBe(false);
+    if (!result.valid) {
+      expect(
+        result.errors.some((e) => e.includes("healthCheck.expectedStatus"))
+      ).toBe(true);
+    }
+  });
+
+  test("validates config field with options array", () => {
+    const result = validateManifest({
+      id: "opts",
+      name: "Options Plugin",
+      direction: "export",
+      config: {
+        LOCATION: {
+          label: "Location",
+          type: "string",
+          required: false,
+          options: ["new", "later", "archive"],
+          placeholder: "Default (new)",
+        },
+      },
+      execute: {
+        type: "url-redirect",
+        actionLabel: "Test",
+        urlTemplate: "https://x.com",
+      },
+    });
+    expect(result.valid).toBe(true);
+  });
+
+  test("rejects config field with non-array options", () => {
+    const result = validateManifest({
+      id: "bad-opts",
+      name: "Bad",
+      direction: "export",
+      config: {
+        KEY: {
+          label: "Key",
+          type: "string",
+          required: false,
+          options: "not-an-array",
+        },
+      },
+      execute: {
+        type: "url-redirect",
+        actionLabel: "Test",
+        urlTemplate: "https://x.com",
+      },
+    });
+    expect(result.valid).toBe(false);
+    if (!result.valid) {
+      expect(result.errors.some((e) => e.includes("options"))).toBe(true);
+    }
+  });
+
+  test("rejects config field with non-string placeholder", () => {
+    const result = validateManifest({
+      id: "bad-ph",
+      name: "Bad",
+      direction: "export",
+      config: {
+        KEY: {
+          label: "Key",
+          type: "string",
+          required: false,
+          placeholder: 123,
+        },
+      },
+      execute: {
+        type: "url-redirect",
+        actionLabel: "Test",
+        urlTemplate: "https://x.com",
+      },
+    });
+    expect(result.valid).toBe(false);
+    if (!result.valid) {
+      expect(result.errors.some((e) => e.includes("placeholder"))).toBe(true);
+    }
+  });
 });
 

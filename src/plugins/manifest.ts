@@ -2,22 +2,18 @@
 // Plugin Manifest Types
 // ---------------------------------------------------------------------------
 
-export interface PluginManifest {
-  id: string;
-  name: string;
-  icon?: string;
-  description?: string;
-  version?: string;
-  direction: "export" | "ingest" | "both";
-  config?: Record<string, PluginConfigField>;
-  execute?: ExecuteBlock;
-  ingest?: IngestBlock;
+export interface HealthCheckBlock {
+  url: string;
+  headers?: Record<string, string>;
+  expectedStatus?: number;
 }
 
 export interface PluginConfigField {
   label: string;
   type: "string" | "boolean";
   required: boolean;
+  options?: string[];
+  placeholder?: string;
 }
 
 export type ExecuteBlock = ApiCallExecute | UrlRedirectExecute | FileWriteExecute;
@@ -28,7 +24,7 @@ export interface ApiCallExecute {
   method: string;
   url: string;
   headers?: Record<string, string>;
-  body?: Record<string, string>;
+  body?: Record<string, unknown>;
   successMessage?: string;
 }
 
@@ -57,6 +53,19 @@ export interface IngestBlock {
     collection?: string;
     sourceFeed?: string;
   };
+}
+
+export interface PluginManifest {
+  id: string;
+  name: string;
+  icon?: string;
+  description?: string;
+  version?: string;
+  direction: "export" | "ingest" | "both";
+  config?: Record<string, PluginConfigField>;
+  execute?: ExecuteBlock;
+  ingest?: IngestBlock;
+  healthCheck?: HealthCheckBlock;
 }
 
 // ---------------------------------------------------------------------------
@@ -207,6 +216,36 @@ export function validateManifest(json: unknown): ValidationResult {
         }
         if (typeof f.required !== "boolean") {
           errors.push(`config.${key}.required must be a boolean`);
+        }
+        if (f.options !== undefined) {
+          if (!Array.isArray(f.options)) {
+            errors.push(`config.${key}.options must be an array if provided`);
+          } else if (f.options.some((o: unknown) => typeof o !== "string" || (o as string).length === 0)) {
+            errors.push(`config.${key}.options must contain non-empty strings`);
+          }
+        }
+        if (f.placeholder !== undefined && typeof f.placeholder !== "string") {
+          errors.push(`config.${key}.placeholder must be a string if provided`);
+        }
+      }
+    }
+  }
+
+  // healthCheck block validation (optional)
+  if (obj.healthCheck !== undefined) {
+    if (typeof obj.healthCheck !== "object" || obj.healthCheck === null) {
+      errors.push("'healthCheck' must be an object if provided");
+    } else {
+      const hc = obj.healthCheck as Record<string, unknown>;
+      if (typeof hc.url !== "string" || hc.url.length === 0) {
+        errors.push("healthCheck.url is required and must be a non-empty string");
+      }
+      if (hc.expectedStatus !== undefined && typeof hc.expectedStatus !== "number") {
+        errors.push("healthCheck.expectedStatus must be a number if provided");
+      }
+      if (hc.headers !== undefined) {
+        if (typeof hc.headers !== "object" || hc.headers === null) {
+          errors.push("healthCheck.headers must be an object if provided");
         }
       }
     }

@@ -95,8 +95,9 @@ const n8nManifest = {
 const readerWithHealthCheck = {
   ...readerManifest,
   healthCheck: {
-    url: "https://readwise.io/api/v3/me/",
+    url: "https://readwise.io/api/v2/auth/",
     headers: { Authorization: "Token {{config.READWISE_TOKEN}}" },
+    expectedStatus: 204,
   },
 };
 
@@ -603,7 +604,7 @@ describe("plugin routes", () => {
     test("returns ok for valid health check", async () => {
       const originalFetch = globalThis.fetch;
       globalThis.fetch = mock(() =>
-        Promise.resolve(new Response("ok", { status: 200 }))
+        Promise.resolve(new Response("", { status: 204 }))
       ) as any;
 
       try {

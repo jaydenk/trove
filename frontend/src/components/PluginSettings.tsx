@@ -89,6 +89,16 @@ function PluginRow({
     type: "success" | "error";
     message: string;
   } | null>(null);
+  const [healthStatus, setHealthStatus] = useState<{
+    type: "ok" | "error";
+    message?: string;
+  } | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
 
   // Load existing config when expanded
   useEffect(() => {
@@ -116,10 +126,28 @@ function PluginRow({
   async function handleSave() {
     setSaving(true);
     setFeedback(null);
+    setHealthStatus(null);
     try {
       await api.plugins.setConfig(plugin.id, fields);
       setFeedback({ type: "success", message: "Saved" });
       onSaved();
+
+      // Auto-run health check if plugin has one
+      if (plugin.hasHealthCheck) {
+        setChecking(true);
+        try {
+          const result = await api.plugins.healthCheck(plugin.id);
+          setHealthStatus(
+            result.status === "ok"
+              ? { type: "ok" }
+              : { type: "error", message: result.message }
+          );
+        } catch {
+          setHealthStatus({ type: "error", message: "Health check failed" });
+        } finally {
+          setChecking(false);
+        }
+      }
     } catch (err) {
       if (err instanceof ApiError) {
         setFeedback({ type: "error", message: err.message });
@@ -128,6 +156,30 @@ function PluginRow({
       }
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleTest() {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const result = await api.plugins.test(plugin.id);
+      if (result.type === "redirect" && result.url) {
+        window.open(result.url, "_blank");
+        setTestResult({ type: "success", message: "Test sent — check the target app" });
+      } else if (result.type === "success") {
+        setTestResult({ type: "success", message: result.message ?? "Test succeeded" });
+      } else {
+        setTestResult({ type: "error", message: result.message ?? "Test failed" });
+      }
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setTestResult({ type: "error", message: err.message });
+      } else {
+        setTestResult({ type: "error", message: "Test failed" });
+      }
+    } finally {
+      setTesting(false);
     }
   }
 
@@ -279,37 +331,101 @@ function PluginRow({
                       <span className="text-red-500 ml-0.5">*</span>
                     )}
                   </label>
-                  <input
-                    type={schema.type === "password" ? "password" : "text"}
-                    value={fields[key] ?? ""}
-                    onChange={(e) =>
-                      setFields({ ...fields, [key]: e.target.value })
-                    }
-                    placeholder={schema.label}
-                    className={inputClass}
-                  />
+                  {schema.options && schema.options.length > 0 ? (
+                    <select
+                      value={fields[key] ?? ""}
+                      onChange={(e) =>
+                        setFields({ ...fields, [key]: e.target.value })
+                      }
+                      className={inputClass}
+                    >
+                      <option value="">
+                        {schema.placeholder ?? `Select ${schema.label}`}
+                      </option>
+                      {schema.options.map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type={key.toLowerCase().includes("token") || key.toLowerCase().includes("password") || key.toLowerCase().includes("secret") ? "password" : "text"}
+                      value={fields[key] ?? ""}
+                      onChange={(e) =>
+                        setFields({ ...fields, [key]: e.target.value })
+                      }
+                      placeholder={schema.placeholder ?? schema.label}
+                      className={inputClass}
+                    />
+                  )}
                 </div>
               ))}
-              <div className="flex items-center gap-3 pt-1">
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="inline-flex items-center gap-1.5 rounded-md bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 px-3 py-1.5 text-sm font-medium hover:bg-neutral-800 dark:hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  {saving && <Spinner className="h-3 w-3" />}
-                  {saving ? "Saving..." : "Save"}
-                </button>
-                {feedback && (
-                  <span
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="inline-flex items-center gap-1.5 rounded-md bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 px-3 py-1.5 text-sm font-medium hover:bg-neutral-800 dark:hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {saving && <Spinner className="h-3 w-3" />}
+                    {saving ? "Saving..." : "Save"}
+                  </button>
+                  {plugin.hasExecute && plugin.isConfigured && (
+                    <button
+                      type="button"
+                      onClick={handleTest}
+                      disabled={testing}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-border dark:border-dark-border text-neutral-900 dark:text-neutral-100 px-3 py-1.5 text-sm font-medium hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {testing && <Spinner className="h-3 w-3" />}
+                      {testing ? "Testing..." : "Test"}
+                    </button>
+                  )}
+                  {feedback && (
+                    <span
+                      className={`text-xs ${
+                        feedback.type === "error"
+                          ? "text-red-600 dark:text-red-400"
+                          : "text-green-600 dark:text-green-400"
+                      }`}
+                    >
+                      {feedback.message}
+                    </span>
+                  )}
+                </div>
+                {checking && (
+                  <div className="flex items-center gap-2 text-xs text-muted dark:text-dark-muted">
+                    <Spinner className="h-3 w-3" />
+                    Checking connection...
+                  </div>
+                )}
+                {healthStatus && (
+                  <p
                     className={`text-xs ${
-                      feedback.type === "error"
-                        ? "text-red-600 dark:text-red-400"
-                        : "text-green-600 dark:text-green-400"
+                      healthStatus.type === "ok"
+                        ? "text-green-600 dark:text-green-400"
+                        : "text-red-600 dark:text-red-400"
                     }`}
                   >
-                    {feedback.message}
-                  </span>
+                    {healthStatus.type === "ok"
+                      ? "✓ Connected"
+                      : `✗ Connection failed: ${healthStatus.message}`}
+                  </p>
+                )}
+                {testResult && (
+                  <p
+                    className={`text-xs ${
+                      testResult.type === "success"
+                        ? "text-green-600 dark:text-green-400"
+                        : "text-red-600 dark:text-red-400"
+                    }`}
+                  >
+                    {testResult.type === "success"
+                      ? `✓ ${testResult.message}`
+                      : `✗ ${testResult.message}`}
+                  </p>
                 )}
               </div>
             </>

@@ -162,11 +162,30 @@ export default function CollectionSidebar({
       {/* User section */}
       {userName && (
         <div className="px-4 pb-4 pt-1 shrink-0">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-muted dark:text-dark-muted truncate">
-              {userName}
-            </span>
-            <div className="flex items-center gap-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-xs text-muted dark:text-dark-muted truncate">
+                {userName}
+              </span>
+              {onSignOut && (
+                <button
+                  type="button"
+                  onClick={onSignOut}
+                  className="inline-flex items-center justify-center h-5 w-5 rounded text-muted dark:text-dark-muted hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-hover dark:hover:bg-dark-hover transition-colors shrink-0"
+                  aria-label="Sign out"
+                  title="Sign out"
+                >
+                  <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M3 4.25A2.25 2.25 0 015.25 2h5.5A2.25 2.25 0 0113 4.25v2a.75.75 0 01-1.5 0v-2a.75.75 0 00-.75-.75h-5.5a.75.75 0 00-.75.75v11.5c0 .414.336.75.75.75h5.5a.75.75 0 00.75-.75v-2a.75.75 0 011.5 0v2A2.25 2.25 0 0110.75 18h-5.5A2.25 2.25 0 013 15.75V4.25z" clipRule="evenodd" />
+                    <path fillRule="evenodd" d="M19 10a.75.75 0 00-.75-.75H8.704l1.048-.943a.75.75 0 10-1.004-1.114l-2.5 2.25a.75.75 0 000 1.114l2.5 2.25a.75.75 0 101.004-1.114l-1.048-.943h9.546A.75.75 0 0019 10z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-[10px] text-muted/60 dark:text-dark-muted/60">
+                v{__APP_VERSION__}
+              </span>
               {onOpenHelp && (
                 <button
                   type="button"
@@ -176,17 +195,8 @@ export default function CollectionSidebar({
                   title="Help"
                 >
                   <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.94 6.94a.75.75 0 11-1.06-1.06 3.5 3.5 0 015.024 4.87l-.868.678a1.25 1.25 0 00-.476.997V13a.75.75 0 01-1.5 0v-.652c0-.664.277-1.298.77-1.75l.868-.677A2 2 0 008.94 6.94zM10 17a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
                   </svg>
-                </button>
-              )}
-              {onSignOut && (
-                <button
-                  type="button"
-                  onClick={onSignOut}
-                  className="text-xs text-muted dark:text-dark-muted hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
-                >
-                  Sign out
                 </button>
               )}
             </div>

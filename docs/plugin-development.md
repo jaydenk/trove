@@ -174,6 +174,17 @@ Filters are applied with the pipe syntax: `{{variable|filter}}`.
 | `\|urlencode` | URL-encode the value |
 | `\|json` | JSON-stringify the value |
 | `\|yamllist` | Format an array as a YAML block list (each item on its own line, prefixed with `- `) |
+| `\|default:value` | Returns the fallback value if the variable is empty |
+
+### Filter Chaining
+
+Filters can be chained with multiple `|` separators. They apply left to right:
+
+```
+{{config.TAGS|default:trove|urlencode}}
+```
+
+This resolves `TAGS`, falls back to `trove` if empty, then URL-encodes the result.
 
 ## Config Schema
 
@@ -201,8 +212,52 @@ The `config` field defines settings the user must provide before using the plugi
 | `label` | `string` | Display label in the settings UI |
 | `type` | `"string"` or `"boolean"` | Input type |
 | `required` | `boolean` | Whether the field must be filled before the plugin can execute |
+| `options` | `string[]` | Constrain input to a dropdown list of values |
+| `placeholder` | `string` | Hint text shown in the input field |
 
 Users configure plugin settings from **Settings > Plugins** in the web UI.
+
+### Config Field with Options
+
+```json
+{
+  "config": {
+    "LOCATION": {
+      "label": "Save Location",
+      "type": "string",
+      "required": false,
+      "options": ["new", "later", "archive"],
+      "placeholder": "Default (new)"
+    }
+  }
+}
+```
+
+When `options` is provided, the settings UI renders a dropdown instead of a text input.
+
+## Health Check Block
+
+Plugins that use API credentials can include a `healthCheck` block to verify the connection at configuration time. When the user saves their config, the health check runs automatically.
+
+```json
+{
+  "healthCheck": {
+    "url": "https://api.example.com/me",
+    "headers": {
+      "Authorization": "Bearer {{config.API_TOKEN}}"
+    },
+    "expectedStatus": 200
+  }
+}
+```
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `url` | `string` | Yes | URL to check (supports template variables) |
+| `headers` | `object` | No | Request headers (supports template variables) |
+| `expectedStatus` | `number` | No | Expected HTTP status code. Default: `200` |
+
+Only meaningful for `api-call` plugins. Plugins using `url-redirect` or `file-write` don't need one — use the Test button instead to verify end-to-end.
 
 ## Walkthrough: Creating an Export Plugin
 
@@ -283,6 +338,146 @@ The webhook endpoint will be available at `POST /api/plugins/webhook-receiver/we
 4. Enable the plugin for your account
 5. Fill in any required configuration fields
 
+## Example Plugins
+
+Ready-to-paste manifests for common integrations.
+
+### Notion
+
+Save links to a Notion database. Create a Notion integration at [notion.so/my-integrations](https://www.notion.so/my-integrations), then share your target database with it and copy the database ID from the URL.
+
+```json
+{
+  "id": "notion-save",
+  "name": "Save to Notion",
+  "icon": "N",
+  "description": "Save links to a Notion database",
+  "version": "1.0.0",
+  "direction": "export",
+  "config": {
+    "NOTION_TOKEN": { "label": "Notion Integration Token", "type": "string", "required": true },
+    "DATABASE_ID": { "label": "Notion Database ID", "type": "string", "required": true }
+  },
+  "execute": {
+    "type": "api-call",
+    "actionLabel": "Save to Notion",
+    "method": "POST",
+    "url": "https://api.notion.com/v1/pages",
+    "headers": { "Authorization": "Bearer {{config.NOTION_TOKEN}}", "Notion-Version": "2022-06-28" },
+    "body": {
+      "parent": { "database_id": "{{config.DATABASE_ID}}" },
+      "properties": { "URL": { "url": "{{link.url}}" }, "Name": { "title": [{ "text": { "content": "{{link.title}}" } }] } }
+    },
+    "successMessage": "Saved to Notion"
+  },
+  "healthCheck": { "url": "https://api.notion.com/v1/users/me", "headers": { "Authorization": "Bearer {{config.NOTION_TOKEN}}", "Notion-Version": "2022-06-28" } }
+}
+```
+
+### Todoist
+
+Create a task in Todoist from a link. Find your API token in Todoist Settings > Integrations > Developer. The `PROJECT_ID` is optional — omit it to send tasks to your Inbox.
+
+```json
+{
+  "id": "todoist",
+  "name": "Todoist",
+  "icon": "☑️",
+  "description": "Create a task in Todoist from a link",
+  "version": "1.0.0",
+  "direction": "export",
+  "config": {
+    "TODOIST_TOKEN": { "label": "Todoist API Token", "type": "string", "required": true },
+    "PROJECT_ID": { "label": "Project ID (optional)", "type": "string", "required": false, "placeholder": "Default: Inbox" }
+  },
+  "execute": {
+    "type": "api-call",
+    "actionLabel": "Add to Todoist",
+    "method": "POST",
+    "url": "https://api.todoist.com/rest/v2/tasks",
+    "headers": { "Authorization": "Bearer {{config.TODOIST_TOKEN}}", "Content-Type": "application/json" },
+    "body": { "content": "{{link.title}}", "description": "{{link.url}}", "project_id": "{{config.PROJECT_ID}}" },
+    "successMessage": "Added to Todoist"
+  },
+  "healthCheck": { "url": "https://api.todoist.com/rest/v2/projects", "headers": { "Authorization": "Bearer {{config.TODOIST_TOKEN}}" } }
+}
+```
+
+### Pocket
+
+Save links to Pocket for reading later. Pocket uses OAuth — obtain a `consumer_key` from [getpocket.com/developer](https://getpocket.com/developer) and generate an `access_token` via their authorisation flow.
+
+```json
+{
+  "id": "pocket",
+  "name": "Pocket",
+  "icon": "📥",
+  "description": "Save links to Pocket for reading later",
+  "version": "1.0.0",
+  "direction": "export",
+  "config": {
+    "CONSUMER_KEY": { "label": "Consumer Key", "type": "string", "required": true },
+    "ACCESS_TOKEN": { "label": "Access Token", "type": "string", "required": true }
+  },
+  "execute": {
+    "type": "api-call",
+    "actionLabel": "Save to Pocket",
+    "method": "POST",
+    "url": "https://getpocket.com/v3/add",
+    "headers": { "Content-Type": "application/json" },
+    "body": { "url": "{{link.url}}", "title": "{{link.title}}", "tags": "{{link.tags}}", "consumer_key": "{{config.CONSUMER_KEY}}", "access_token": "{{config.ACCESS_TOKEN}}" },
+    "successMessage": "Saved to Pocket"
+  }
+}
+```
+
+### Slack Incoming Webhook
+
+Share links to a Slack channel. Create an incoming webhook at [api.slack.com/apps](https://api.slack.com/apps) and paste the generated URL into `WEBHOOK_URL`.
+
+```json
+{
+  "id": "slack-webhook",
+  "name": "Slack",
+  "icon": "💬",
+  "description": "Share links to a Slack channel via incoming webhook",
+  "version": "1.0.0",
+  "direction": "export",
+  "config": {
+    "WEBHOOK_URL": { "label": "Incoming Webhook URL", "type": "string", "required": true, "placeholder": "https://hooks.slack.com/services/..." }
+  },
+  "execute": {
+    "type": "api-call",
+    "actionLabel": "Share to Slack",
+    "method": "POST",
+    "url": "{{config.WEBHOOK_URL}}",
+    "headers": { "Content-Type": "application/json" },
+    "body": { "text": "<{{link.url}}|{{link.title}}>" },
+    "successMessage": "Shared to Slack"
+  }
+}
+```
+
+### GitHub Starred
+
+Receive starred GitHub repositories via webhook. Wire this up with an n8n workflow or GitHub Actions to forward star events to the ingest endpoint.
+
+```json
+{
+  "id": "github-starred",
+  "name": "GitHub Starred",
+  "icon": "⭐",
+  "description": "Receive starred GitHub repositories via webhook",
+  "version": "1.0.0",
+  "direction": "ingest",
+  "config": {},
+  "ingest": {
+    "description": "Receive GitHub starred repositories from an n8n or automation workflow",
+    "itemMapping": { "url": "$.html_url", "title": "$.full_name", "tags": "$.topics" }
+  }
+}
+```
+
 ## Testing Plugins
 
 - **Export plugins** — save a link, then click the plugin's action button in the link detail panel. Check the action history for success or error messages.
@@ -297,7 +492,7 @@ The webhook endpoint will be available at `POST /api/plugins/webhook-receiver/we
 
 ## Shipped Plugins
 
-Three plugins ship with Trove as system plugins (cannot be deleted):
+Five plugins ship with Trove as system plugins (cannot be deleted):
 
 ### Readwise Reader
 
@@ -336,3 +531,15 @@ Receives links from [n8n](https://n8n.io) automation workflows. Use this to pipe
 ```
 
 All fields except `url` are optional. The `collection` field matches by name — unmatched collections default to inbox.
+
+### Obsidian
+
+Saves links as Markdown notes in your [Obsidian](https://obsidian.md) vault. Each note includes YAML front matter with the URL, tags, and date. The note body contains the title, description, and a link back to the original.
+
+**Configuration:** Requires `VAULT_PATH` (the absolute path to your vault). Optionally set `SUBFOLDER` to organise notes into a subdirectory.
+
+### Apple Reminders
+
+Creates a reminder via [Apple Shortcuts](https://support.apple.com/en-au/guide/shortcuts/welcome/ios). The link title and URL are passed as input text to a configurable shortcut.
+
+**Configuration:** Requires `SHORTCUT_NAME` — the name of the shortcut to run. Create a shortcut that accepts text input and creates a reminder from it.

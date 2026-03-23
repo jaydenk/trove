@@ -136,7 +136,12 @@ async function executeApiCall(
         exec.body as Record<string, unknown>,
         context
       );
-      body = JSON.stringify(interpolatedBody);
+      // Remove empty string values — APIs like Readwise reject "" for
+      // optional enum fields (e.g. category, location)
+      const cleaned = Object.fromEntries(
+        Object.entries(interpolatedBody).filter(([, v]) => v !== "")
+      );
+      body = JSON.stringify(cleaned);
     }
 
     const response = await fetch(url, { method, headers, body });

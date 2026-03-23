@@ -3,7 +3,7 @@
   "name": "Readwise Reader",
   "icon": "📖",
   "description": "Send links to Readwise Reader for reading later",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "direction": "export",
   "config": {
     "READWISE_TOKEN": {

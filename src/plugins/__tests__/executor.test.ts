@@ -1,6 +1,6 @@
-import { describe, test, expect, afterAll, mock } from "bun:test";
-import { executePlugin } from "../executor";
-import type { PluginManifest } from "../manifest";
+import { describe, test, expect, afterAll, afterEach, mock } from "bun:test";
+import { executePlugin, executeHealthCheck } from "../executor";
+import type { PluginManifest, HealthCheckBlock } from "../manifest";
 import type { TemplateContext } from "../template";
 import { mkdtemp, readFile, writeFile, mkdir, symlink, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -245,6 +245,89 @@ describe("plugin executor", () => {
     if (result.type === "error") {
       expect(result.message).toContain("no execute block");
     }
+  });
+
+  describe("executeHealthCheck", () => {
+    const originalFetch = globalThis.fetch;
+
+    afterEach(() => {
+      globalThis.fetch = originalFetch;
+    });
+
+    test("returns ok when API returns expected status", async () => {
+      globalThis.fetch = mock(() =>
+        Promise.resolve(new Response("ok", { status: 200 }))
+      ) as any;
+
+      const hc: HealthCheckBlock = {
+        url: "https://api.example.com/me",
+        headers: { Authorization: "Token {{config.TOKEN}}" },
+      };
+
+      const result = await executeHealthCheck(hc, { TOKEN: "abc123" });
+      expect(result.status).toBe("ok");
+    });
+
+    test("returns error when API returns non-matching status", async () => {
+      globalThis.fetch = mock(() =>
+        Promise.resolve(new Response("Unauthorized", { status: 401 }))
+      ) as any;
+
+      const hc: HealthCheckBlock = {
+        url: "https://api.example.com/me",
+      };
+
+      const result = await executeHealthCheck(hc, {});
+      expect(result.status).toBe("error");
+      expect(result.message).toContain("401");
+    });
+
+    test("returns error on network failure", async () => {
+      globalThis.fetch = mock(() =>
+        Promise.reject(new Error("fetch failed"))
+      ) as any;
+
+      const hc: HealthCheckBlock = {
+        url: "https://unreachable.example.com",
+      };
+
+      const result = await executeHealthCheck(hc, {});
+      expect(result.status).toBe("error");
+      expect(result.message).toContain("fetch failed");
+    });
+
+    test("interpolates config in URL and headers", async () => {
+      let capturedUrl = "";
+      let capturedHeaders: Record<string, string> = {};
+      globalThis.fetch = mock((url: string, opts: any) => {
+        capturedUrl = url;
+        capturedHeaders = opts.headers;
+        return Promise.resolve(new Response("ok", { status: 200 }));
+      }) as any;
+
+      const hc: HealthCheckBlock = {
+        url: "https://api.example.com/{{config.VERSION}}/me",
+        headers: { Authorization: "Bearer {{config.TOKEN}}" },
+      };
+
+      await executeHealthCheck(hc, { TOKEN: "xyz", VERSION: "v3" });
+      expect(capturedUrl).toBe("https://api.example.com/v3/me");
+      expect(capturedHeaders.Authorization).toBe("Bearer xyz");
+    });
+
+    test("uses custom expectedStatus", async () => {
+      globalThis.fetch = mock(() =>
+        Promise.resolve(new Response("ok", { status: 204 }))
+      ) as any;
+
+      const hc: HealthCheckBlock = {
+        url: "https://api.example.com/me",
+        expectedStatus: 204,
+      };
+
+      const result = await executeHealthCheck(hc, {});
+      expect(result.status).toBe("ok");
+    });
   });
 
   describe("file-write", () => {

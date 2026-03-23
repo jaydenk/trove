@@ -4,6 +4,7 @@ import type {
   ApiCallExecute,
   UrlRedirectExecute,
   FileWriteExecute,
+  HealthCheckBlock,
 } from "./manifest";
 import type { TemplateContext } from "./template";
 import { interpolate, interpolateObject } from "./template";
@@ -22,6 +23,66 @@ export type PluginResult =
   | { type: "success"; message: string }
   | { type: "redirect"; url: string }
   | { type: "error"; message: string };
+
+// ---------------------------------------------------------------------------
+// Health Check
+// ---------------------------------------------------------------------------
+
+export type HealthCheckResult =
+  | { status: "ok" }
+  | { status: "error"; message: string };
+
+export async function executeHealthCheck(
+  healthCheck: HealthCheckBlock,
+  config: Record<string, string>
+): Promise<HealthCheckResult> {
+  const context: TemplateContext = {
+    link: {
+      url: "",
+      title: "",
+      description: null,
+      domain: null,
+      tags: "",
+      tagsArray: "[]",
+      createdAt: "",
+    },
+    config,
+  };
+
+  try {
+    const url = interpolate(healthCheck.url, context);
+    const headers: Record<string, string> = {};
+    if (healthCheck.headers) {
+      for (const [key, value] of Object.entries(healthCheck.headers)) {
+        headers[key] = interpolate(value, context);
+      }
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers,
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    const expected = healthCheck.expectedStatus ?? 200;
+    if (response.status !== expected) {
+      return {
+        status: "error",
+        message: `Expected status ${expected}, got ${response.status}`,
+      };
+    }
+
+    return { status: "ok" };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Unknown error";
+    return { status: "error", message };
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Execute Plugin

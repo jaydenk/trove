@@ -299,6 +299,7 @@ describe("MCP tool logic", () => {
         domain: fetched.domain,
         tags: tagNames.join(", "),
         tagsArray: JSON.stringify(tagNames),
+        createdAt: fetched.created_at,
       },
       config: getPluginConfig(db, userId, "things"),
     };

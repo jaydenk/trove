@@ -72,7 +72,7 @@ Makes an HTTP request to an external API.
 
 ### `file-write`
 
-Writes a file to a directory on the server's filesystem. Useful for integrations that read from a local directory (e.g. Obsidian vaults, watched folders).
+Writes a file to a directory on the server's filesystem. Useful for integrations that read from a local directory (e.g. watched folders, local archives).
 
 ```json
 {
@@ -297,7 +297,7 @@ The webhook endpoint will be available at `POST /api/plugins/webhook-receiver/we
 
 ## Shipped Plugins
 
-Five plugins ship with Trove as system plugins (cannot be deleted):
+Three plugins ship with Trove as system plugins (cannot be deleted):
 
 ### Readwise Reader
 
@@ -310,36 +310,6 @@ Sends links to [Readwise Reader](https://readwise.io/read) for reading later. Ta
 Creates a task in [Things](https://culturedcode.com/things/) from a link. The link title becomes the task name, the URL goes in the notes, and the task is tagged with `trove`. Uses the Things URL scheme — works on macOS and iOS where Things is installed.
 
 **Configuration:** None required.
-
-### Obsidian
-
-Saves links as Markdown notes in an [Obsidian](https://obsidian.md) vault. Each note is written with YAML frontmatter containing the URL, tags, and creation date, followed by the link title as a heading.
-
-**Configuration:**
-
-| Field | Description |
-| --- | --- |
-| `VAULT_PATH` | Absolute path to your Obsidian vault directory on the server |
-| `SUBFOLDER` | Optional subfolder within the vault (e.g. `Inbox`) |
-
-Notes are written as `<title>.md` inside the configured directory. If a file with the same name already exists, the action returns an error — rename or delete the existing note first.
-
-### Apple Reminders
-
-Creates a reminder from a link using [Apple Shortcuts](https://support.apple.com/guide/shortcuts/welcome/ios). Because Reminders is only available on Apple platforms, this plugin works by calling a named Shortcut on the device, passing the link title and URL as text input. The Shortcut is responsible for creating the reminder.
-
-**Setup:**
-
-1. Create a Shortcut in the Shortcuts app that accepts text input and creates a reminder from it.
-2. Configure the shortcut name in **Settings > Plugins > Apple Reminders**.
-
-**Configuration:**
-
-| Field | Description |
-| --- | --- |
-| `SHORTCUT_NAME` | The exact name of your Shortcut (case-sensitive) |
-
-This plugin uses the `shortcuts://run-shortcut` URL scheme and requires the Shortcuts app to be available on the device triggering the action.
 
 ### n8n Webhook
 

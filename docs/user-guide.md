@@ -261,7 +261,7 @@ Go to **Settings > Plugins** to view, enable/disable, and configure plugins.
 - **Upload** — admins can upload new plugin manifests (JSON) via the Upload Plugin button.
 - **Delete** — admins can delete non-system plugins.
 
-Five system plugins ship with Trove: **Readwise Reader**, **Things**, **Obsidian**, **Apple Reminders**, and **n8n Webhook**. See the [Plugin Development Guide](plugin-development.md) for full details on each, and for creating custom plugins.
+Three system plugins ship with Trove: **Readwise Reader**, **Things**, and **n8n Webhook**. See the [Plugin Development Guide](plugin-development.md) for full details on each, and for creating custom plugins.
 
 ## User Management (Admin)
 

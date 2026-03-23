@@ -130,15 +130,6 @@ describe("template engine", () => {
       expect(result).toBe("");
     });
 
-    test("Obsidian content template interpolates correctly", () => {
-      const template = "---\nurl: {{link.url}}\ntags: {{link.tags|yamllist}}\ndate: {{link.createdAt}}\n---\n\n# {{link.title}}\n\n{{link.description}}\n\n[Original Link]({{link.url}})";
-      const result = interpolate(template, context);
-      expect(result).toContain("url: https://example.com/article?q=1&r=2");
-      expect(result).toContain("tags: \n  - dev\n  - reading");
-      expect(result).toContain("date: 2026-03-23T10:00:00Z");
-      expect(result).toContain("# Example Article");
-      expect(result).toContain("[Original Link](https://example.com/article?q=1&r=2)");
-    });
   });
 
   describe("interpolateObject", () => {

@@ -1,6 +1,4 @@
 import { describe, test, expect } from "bun:test";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { validateManifest } from "../manifest";
 
 describe("manifest validation", () => {
@@ -346,20 +344,3 @@ describe("manifest validation", () => {
   });
 });
 
-describe("system plugin manifests", () => {
-  test("obsidian.json passes validation", () => {
-    const raw = JSON.parse(
-      readFileSync(join(__dirname, "../../../data/plugins/obsidian.json"), "utf-8")
-    );
-    const result = validateManifest(raw);
-    expect(result.valid).toBe(true);
-  });
-
-  test("reminders.json passes validation", () => {
-    const raw = JSON.parse(
-      readFileSync(join(__dirname, "../../../data/plugins/reminders.json"), "utf-8")
-    );
-    const result = validateManifest(raw);
-    expect(result.valid).toBe(true);
-  });
-});

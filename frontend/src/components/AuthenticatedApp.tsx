@@ -126,7 +126,7 @@ export default function AuthenticatedApp({
       }
       const si = prefs.showImages ?? prefs.show_images;
       if (si !== undefined) {
-        setShowImagesState(si === "true" || si === true);
+        setShowImagesState(si === "true");
       }
       setPrefsLoaded(true);
 

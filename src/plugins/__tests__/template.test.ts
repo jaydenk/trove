@@ -130,6 +130,40 @@ describe("template engine", () => {
       expect(result).toBe("");
     });
 
+    test("default filter returns fallback when value is empty", () => {
+      expect(interpolate("{{config.MISSING|default:fallback}}", context)).toBe(
+        "fallback"
+      );
+    });
+
+    test("default filter passes through non-empty value", () => {
+      expect(interpolate("{{config.API_TOKEN|default:fallback}}", context)).toBe(
+        "test-token-abc"
+      );
+    });
+
+    test("chained filters apply left to right", () => {
+      const ctx: TemplateContext = {
+        ...context,
+        config: {},
+      };
+      expect(
+        interpolate("{{config.MISSING|default:hello world|urlencode}}", ctx)
+      ).toBe("hello%20world");
+    });
+
+    test("chained filters — non-empty value passes through default then encodes", () => {
+      expect(
+        interpolate("{{link.title|default:unused|urlencode}}", context)
+      ).toBe("Example%20Article");
+    });
+
+    test("single filter still works after refactor (no regression)", () => {
+      expect(interpolate("{{link.title|urlencode}}", context)).toBe(
+        "Example%20Article"
+      );
+    });
+
   });
 
   describe("interpolateObject", () => {

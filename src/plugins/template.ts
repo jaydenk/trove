@@ -19,13 +19,19 @@ export interface TemplateContext {
 // Filters
 // ---------------------------------------------------------------------------
 
-const filters: Record<string, (value: string) => string> = {
+type FilterFn = (value: string, arg?: string) => string;
+
+const filters: Record<string, FilterFn> = {
   urlencode: (v) => encodeURIComponent(v),
   json: (v) => JSON.stringify(v),
   yamllist: (v) => {
     if (!v.trim()) return "";
-    return v.split(",").map((t) => `\n  - ${t.trim()}`).join("");
+    return v
+      .split(",")
+      .map((t) => `\n  - ${t.trim()}`)
+      .join("");
   },
+  default: (v, arg) => (v === "" && arg !== undefined ? arg : v),
 };
 
 // ---------------------------------------------------------------------------
@@ -52,11 +58,26 @@ function resolve(path: string, context: TemplateContext): string {
 }
 
 /**
+ * Parse a filter segment like "urlencode" or "default:trove" into name + optional arg.
+ */
+function parseFilter(segment: string): { name: string; arg?: string } {
+  const colonIndex = segment.indexOf(":");
+  if (colonIndex === -1) {
+    return { name: segment.trim() };
+  }
+  return {
+    name: segment.slice(0, colonIndex).trim(),
+    arg: segment.slice(colonIndex + 1),
+  };
+}
+
+/**
  * Interpolate all `{{...}}` expressions in a template string.
  *
  * Supports:
  * - `{{link.url}}` — simple variable
  * - `{{link.title|urlencode}}` — variable with filter
+ * - `{{config.TAGS|default:trove|urlencode}}` — chained filters
  * - `{{config.KEY}}` — config variable
  */
 export function interpolate(
@@ -65,22 +86,16 @@ export function interpolate(
 ): string {
   return template.replace(/\{\{(.+?)\}\}/g, (_match, expr: string) => {
     const trimmed = expr.trim();
-    const pipeIndex = trimmed.indexOf("|");
-
-    let path: string;
-    let filterName: string | null = null;
-
-    if (pipeIndex !== -1) {
-      path = trimmed.slice(0, pipeIndex).trim();
-      filterName = trimmed.slice(pipeIndex + 1).trim();
-    } else {
-      path = trimmed;
-    }
+    const segments = trimmed.split("|");
+    const path = segments[0].trim();
 
     let value = resolve(path, context);
 
-    if (filterName && filters[filterName]) {
-      value = filters[filterName](value);
+    for (let i = 1; i < segments.length; i++) {
+      const { name, arg } = parseFilter(segments[i]);
+      if (filters[name]) {
+        value = filters[name](value, arg);
+      }
     }
 
     return value;

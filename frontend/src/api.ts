@@ -54,11 +54,21 @@ export interface PluginInfo {
   name: string;
   icon: string;
   description: string;
-  configSchema: Record<string, { label: string; type: string; required: boolean }>;
+  configSchema: Record<
+    string,
+    {
+      label: string;
+      type: string;
+      required: boolean;
+      options?: string[];
+      placeholder?: string;
+    }
+  >;
   hasExecute: boolean;
-  executeType: "api-call" | "url-redirect" | null;
+  executeType: "api-call" | "url-redirect" | "file-write" | null;
   actionLabel: string | null;
   hasIngest: boolean;
+  hasHealthCheck: boolean;
   isConfigured: boolean;
   direction: "export" | "ingest" | "both";
   enabled: boolean;
@@ -70,6 +80,11 @@ export interface PluginActionResult {
   type: "success" | "redirect" | "error";
   message?: string;
   url?: string;
+}
+
+export interface HealthCheckResult {
+  status: "ok" | "error";
+  message?: string;
 }
 
 export interface LinkAction {
@@ -379,6 +394,16 @@ export const api = {
 
     disable: (id: string) =>
       request<{ enabled: boolean }>(`/plugins/${id}/disable`, { method: "PUT" }),
+
+    healthCheck: (id: string) =>
+      request<HealthCheckResult>(`/plugins/${id}/health-check`, {
+        method: "POST",
+      }),
+
+    test: (id: string) =>
+      request<PluginActionResult>(`/plugins/${id}/test`, {
+        method: "POST",
+      }),
   },
 
   tags: {

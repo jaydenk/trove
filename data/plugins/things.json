@@ -1,14 +1,34 @@
 {
   "id": "things",
   "name": "Things",
-  "icon": "\u2705",
+  "icon": "✅",
   "description": "Create a task in Things from a link",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "direction": "export",
-  "config": {},
+  "config": {
+    "THINGS_PROJECT": {
+      "label": "Default Project",
+      "type": "string",
+      "required": false,
+      "placeholder": "e.g. Reading, Research"
+    },
+    "THINGS_WHEN": {
+      "label": "Default Schedule",
+      "type": "string",
+      "required": false,
+      "options": ["today", "tomorrow", "evening", "anytime", "someday"],
+      "placeholder": "No schedule"
+    },
+    "THINGS_TAGS": {
+      "label": "Tags (comma-separated)",
+      "type": "string",
+      "required": false,
+      "placeholder": "Default: trove"
+    }
+  },
   "execute": {
     "type": "url-redirect",
     "actionLabel": "Send to Things",
-    "urlTemplate": "things:///add?title={{link.title|urlencode}}&notes={{link.url|urlencode}}&tags=trove"
+    "urlTemplate": "things:///add?title={{link.title|urlencode}}&notes={{link.url|urlencode}}&tags={{config.THINGS_TAGS|default:trove|urlencode}}&list={{config.THINGS_PROJECT|urlencode}}&when={{config.THINGS_WHEN|urlencode}}"
   }
 }

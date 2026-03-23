@@ -1,4 +1,6 @@
 import { describe, test, expect } from "bun:test";
+import { readFileSync } from "fs";
+import { join } from "path";
 import { validateManifest } from "../manifest";
 
 describe("manifest validation", () => {
@@ -479,6 +481,41 @@ describe("manifest validation", () => {
     if (!result.valid) {
       expect(result.errors.some((e) => e.includes("placeholder"))).toBe(true);
     }
+  });
+});
+
+function loadManifest(filename: string): unknown {
+  const raw = readFileSync(
+    join(import.meta.dir, "..", "..", "..", "data", "plugins", filename),
+    "utf-8"
+  );
+  return JSON.parse(raw);
+}
+
+describe("shipped plugin manifests", () => {
+  test("reader.json passes validation", () => {
+    const result = validateManifest(loadManifest("reader.json"));
+    expect(result.valid).toBe(true);
+  });
+
+  test("things.json passes validation", () => {
+    const result = validateManifest(loadManifest("things.json"));
+    expect(result.valid).toBe(true);
+  });
+
+  test("n8n.json passes validation", () => {
+    const result = validateManifest(loadManifest("n8n.json"));
+    expect(result.valid).toBe(true);
+  });
+
+  test("obsidian.json passes validation", () => {
+    const result = validateManifest(loadManifest("obsidian.json"));
+    expect(result.valid).toBe(true);
+  });
+
+  test("reminders.json passes validation", () => {
+    const result = validateManifest(loadManifest("reminders.json"));
+    expect(result.valid).toBe(true);
   });
 });
 

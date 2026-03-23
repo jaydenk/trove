@@ -1,15 +1,29 @@
 {
   "id": "reader",
   "name": "Readwise Reader",
-  "icon": "\ud83d\udcd6",
+  "icon": "📖",
   "description": "Send links to Readwise Reader for reading later",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "direction": "export",
   "config": {
     "READWISE_TOKEN": {
       "label": "Readwise API Token",
       "type": "string",
       "required": true
+    },
+    "READER_LOCATION": {
+      "label": "Default Save Location",
+      "type": "string",
+      "required": false,
+      "options": ["new", "later", "archive", "feed"],
+      "placeholder": "Default (new)"
+    },
+    "READER_CATEGORY": {
+      "label": "Content Category",
+      "type": "string",
+      "required": false,
+      "options": ["article", "email", "rss", "highlight", "note", "pdf", "epub", "tweet", "video"],
+      "placeholder": "Default (article)"
     }
   },
   "execute": {
@@ -23,8 +37,17 @@
     },
     "body": {
       "url": "{{link.url}}",
-      "tags": "{{link.tagsArray}}"
+      "tags": "{{link.tagsArray}}",
+      "notes": "{{link.description}}",
+      "location": "{{config.READER_LOCATION}}",
+      "category": "{{config.READER_CATEGORY}}"
     },
     "successMessage": "Sent to Readwise Reader"
+  },
+  "healthCheck": {
+    "url": "https://readwise.io/api/v3/me/",
+    "headers": {
+      "Authorization": "Token {{config.READWISE_TOKEN}}"
+    }
   }
 }

@@ -79,6 +79,7 @@ function PluginRow({
   isAdmin: boolean;
 }) {
   const hasConfig = Object.keys(plugin.configSchema).length > 0;
+  const hasExpandableContent = hasConfig || plugin.hasExecute;
   const [expanded, setExpanded] = useState(false);
   const [fields, setFields] = useState<Record<string, string>>({});
   const [loadingConfig, setLoadingConfig] = useState(false);
@@ -262,37 +263,10 @@ function PluginRow({
               POST /api/plugins/{plugin.id}/webhook
             </p>
           )}
-          {/* Test result feedback (from summary row Test button) */}
-          {testResult && !expanded && (
-            <p
-              className={`mt-1 text-xs ${
-                testResult.type === "success"
-                  ? "text-green-600 dark:text-green-400"
-                  : "text-red-600 dark:text-red-400"
-              }`}
-            >
-              {testResult.type === "success"
-                ? `✓ ${testResult.message}`
-                : `✗ ${testResult.message}`}
-            </p>
-          )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {/* Test button — visible in summary row for enabled export plugins */}
-          {plugin.hasExecute && plugin.enabled && plugin.isConfigured && (
-            <button
-              type="button"
-              onClick={handleTest}
-              disabled={testing}
-              className="inline-flex items-center gap-1 rounded-md border border-border dark:border-dark-border text-muted dark:text-dark-muted hover:text-neutral-900 dark:hover:text-neutral-100 px-2 py-1 text-xs font-medium hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              title="Send a test item to verify the plugin works"
-            >
-              {testing ? <Spinner className="h-3 w-3" /> : null}
-              {testing ? "Testing..." : "Test"}
-            </button>
-          )}
-          {/* Config expand */}
-          {hasConfig && plugin.enabled && (
+          {/* Config/test expand */}
+          {hasExpandableContent && plugin.enabled && (
             <button
               type="button"
               onClick={() => setExpanded(!expanded)}
@@ -341,16 +315,16 @@ function PluginRow({
       </div>
 
       {/* Expandable config form */}
-      {expanded && hasConfig && plugin.enabled && (
+      {expanded && hasExpandableContent && plugin.enabled && (
         <div className="px-5 pb-4 pt-0 ml-9 space-y-3">
-          {loadingConfig ? (
+          {hasConfig && loadingConfig ? (
             <div className="flex items-center gap-2 text-xs text-muted dark:text-dark-muted">
               <Spinner className="h-3 w-3" />
               Loading configuration...
             </div>
           ) : (
             <>
-              {Object.entries(plugin.configSchema).map(([key, schema]) => (
+              {hasConfig && Object.entries(plugin.configSchema).map(([key, schema]) => (
                 <div key={key}>
                   <label className="block text-xs font-medium text-muted dark:text-dark-muted mb-1">
                     {schema.label}
@@ -390,15 +364,17 @@ function PluginRow({
               ))}
               <div className="space-y-2 pt-1">
                 <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="inline-flex items-center gap-1.5 rounded-md bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 px-3 py-1.5 text-sm font-medium hover:bg-neutral-800 dark:hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {saving && <Spinner className="h-3 w-3" />}
-                    {saving ? "Saving..." : "Save"}
-                  </button>
+                  {hasConfig && (
+                    <button
+                      type="button"
+                      onClick={handleSave}
+                      disabled={saving}
+                      className="inline-flex items-center gap-1.5 rounded-md bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 px-3 py-1.5 text-sm font-medium hover:bg-neutral-800 dark:hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {saving && <Spinner className="h-3 w-3" />}
+                      {saving ? "Saving..." : "Save"}
+                    </button>
+                  )}
                   {plugin.hasExecute && plugin.isConfigured && (
                     <button
                       type="button"

@@ -166,10 +166,18 @@ function PluginRow({
     try {
       const result = await api.plugins.test(plugin.id);
       if (result.type === "redirect" && result.url) {
-        window.open(result.url, "_blank");
-        setTestResult({ type: "success", message: "Test sent — check the target app" });
+        // Use location.href for URL schemes (things://, shortcuts://) —
+        // window.open gets blocked by Safari's popup blocker after async calls
+        window.location.href = result.url;
+        setTestResult({
+          type: "success",
+          message: `Sent "[Trove Test] Plugin Verification" to ${plugin.name}`,
+        });
       } else if (result.type === "success") {
-        setTestResult({ type: "success", message: result.message ?? "Test succeeded" });
+        setTestResult({
+          type: "success",
+          message: result.message ?? "Test succeeded",
+        });
       } else {
         setTestResult({ type: "error", message: result.message ?? "Test failed" });
       }

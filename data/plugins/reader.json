@@ -45,9 +45,10 @@
     "successMessage": "Sent to Readwise Reader"
   },
   "healthCheck": {
-    "url": "https://readwise.io/api/v3/me/",
+    "url": "https://readwise.io/api/v2/auth/",
     "headers": {
       "Authorization": "Token {{config.READWISE_TOKEN}}"
-    }
+    },
+    "expectedStatus": 204
   }
 }

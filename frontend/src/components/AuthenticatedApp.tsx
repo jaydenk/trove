@@ -37,6 +37,56 @@ function sanitiseSnippet(html: string): string {
     .replace(/\x00B_CLOSE\x00/g, "</b>");
 }
 
+// ---------------------------------------------------------------------------
+// Infinite scroll sentinel — triggers loadMore when visible in viewport
+// ---------------------------------------------------------------------------
+
+function InfiniteScrollSentinel({
+  hasMore,
+  isLoading,
+  onLoadMore,
+}: {
+  hasMore: boolean;
+  isLoading: boolean;
+  onLoadMore: () => void;
+}) {
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasMore) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !isLoading) {
+          onLoadMore();
+        }
+      },
+      { rootMargin: "200px" },
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, isLoading, onLoadMore]);
+
+  if (!hasMore) return null;
+
+  return (
+    <div ref={sentinelRef} className="flex items-center justify-center py-4 shrink-0">
+      {isLoading && (
+        <svg
+          className="animate-spin h-4 w-4 text-muted dark:text-dark-muted"
+          viewBox="0 0 24 24"
+          fill="none"
+        >
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+      )}
+    </div>
+  );
+}
+
 interface AuthenticatedAppProps {
   user: User;
   onLogout: () => void;
@@ -51,7 +101,6 @@ export default function AuthenticatedApp({
   );
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [selectedLinkId, setSelectedLinkId] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -216,7 +265,6 @@ export default function AuthenticatedApp({
   const handleSelectCollection = (id: string | null) => {
     setSelectedCollection(id);
     setSelectedTag(null);
-    setPage(1);
     setSelectedLinkId(null);
     setShowSettings(false);
     setSelectedLinkIds(new Set());
@@ -229,7 +277,6 @@ export default function AuthenticatedApp({
   const handleSelectTag = (tag: string | null) => {
     setSelectedTag(tag);
     setSelectedCollection(null);
-    setPage(1);
     setSelectedLinkId(null);
     setShowSettings(false);
     setSelectedLinkIds(new Set());
@@ -243,24 +290,25 @@ export default function AuthenticatedApp({
 
   const linkFilters = (() => {
     if (isSearching) {
-      return { q: searchQuery.trim(), page };
+      return { q: searchQuery.trim() };
     }
     if (selectedCollection === "archive") {
-      return { status: "archived", page };
+      return { status: "archived" };
     }
     if (selectedCollection) {
-      return { collectionId: selectedCollection, page };
+      return { collectionId: selectedCollection };
     }
     if (selectedTag) {
-      return { tag: selectedTag, page };
+      return { tag: selectedTag };
     }
-    return { page };
+    return {};
   })();
 
   const {
     links,
-    pagination,
     isLoading: linksLoading,
+    hasMore,
+    loadMore,
     refetch: refetchLinks,
   } = useLinks(linkFilters);
 
@@ -818,7 +866,6 @@ export default function AuthenticatedApp({
             searchQuery={searchQuery}
             onSearchChange={triageMode ? undefined : (v) => {
               setSearchQuery(v);
-              setPage(1);
               setSelectedLinkId(null);
             }}
             bulkModeActive={bulkModeActive}
@@ -841,7 +888,6 @@ export default function AuthenticatedApp({
               value={searchQuery}
               onChange={(v) => {
                 setSearchQuery(v);
-                setPage(1);
                 setSelectedLinkId(null);
               }}
             />
@@ -985,31 +1031,12 @@ export default function AuthenticatedApp({
                 )}
               </main>
 
-              {pagination && pagination.totalPages > 1 && (
-                <div className="border-t border-border dark:border-dark-border px-6 py-3 flex items-center justify-between shrink-0">
-                  <button
-                    type="button"
-                    disabled={pagination.page <= 1}
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    className="text-sm px-3 py-1.5 rounded-md border border-border dark:border-dark-border text-neutral-700 dark:text-neutral-300 hover:bg-hover dark:hover:bg-dark-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Previous
-                  </button>
-                  <span className="text-xs text-muted dark:text-dark-muted tabular-nums">
-                    Page {pagination.page} of {pagination.totalPages}
-                  </span>
-                  <button
-                    type="button"
-                    disabled={pagination.page >= pagination.totalPages}
-                    onClick={() =>
-                      setPage((p) => Math.min(pagination.totalPages, p + 1))
-                    }
-                    className="text-sm px-3 py-1.5 rounded-md border border-border dark:border-dark-border text-neutral-700 dark:text-neutral-300 hover:bg-hover dark:hover:bg-dark-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Next
-                  </button>
-                </div>
-              )}
+              {/* Infinite scroll sentinel */}
+              <InfiniteScrollSentinel
+                hasMore={hasMore}
+                isLoading={linksLoading}
+                onLoadMore={loadMore}
+              />
 
               {/* Keyboard shortcut hints when a link is focused */}
               {focusedLinkIndex >= 0 && focusedLinkIndex < links.length && (

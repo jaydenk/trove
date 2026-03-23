@@ -1,0 +1,29 @@
+{
+  "id": "obsidian",
+  "name": "Obsidian",
+  "icon": "💎",
+  "description": "Save links as notes in your Obsidian vault",
+  "version": "1.0.0",
+  "direction": "export",
+  "config": {
+    "VAULT_PATH": {
+      "label": "Vault Path",
+      "type": "string",
+      "required": true
+    },
+    "SUBFOLDER": {
+      "label": "Subfolder (optional)",
+      "type": "string",
+      "required": false
+    }
+  },
+  "execute": {
+    "type": "file-write",
+    "actionLabel": "Save to Obsidian",
+    "directory": "{{config.VAULT_PATH}}/{{config.SUBFOLDER}}",
+    "filename": "{{link.title}}.md",
+    "content": "---\nurl: {{link.url}}\ntags: {{link.tags|yamllist}}\ndate: {{link.createdAt}}\n---\n\n# {{link.title}}\n\n{{link.description}}\n\n[Original Link]({{link.url}})",
+    "mode": "create",
+    "successMessage": "Saved to Obsidian vault"
+  }
+}

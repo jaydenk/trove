@@ -3,9 +3,12 @@ import type {
   PluginManifest,
   ApiCallExecute,
   UrlRedirectExecute,
+  FileWriteExecute,
 } from "./manifest";
 import type { TemplateContext } from "./template";
 import { interpolate, interpolateObject } from "./template";
+import { mkdir, writeFile, access, realpath } from "node:fs/promises";
+import { resolve, normalize, join } from "node:path";
 import { createLink, updateLink } from "../db/queries/links";
 import { getCollectionByName } from "../db/queries/collections";
 import { getOrCreateTag, addTagToLink } from "../db/queries/tags";
@@ -40,6 +43,10 @@ export async function executePlugin(
 
   if (exec.type === "url-redirect") {
     return executeUrlRedirect(exec, context);
+  }
+
+  if (exec.type === "file-write") {
+    return executeFileWrite(exec, context);
   }
 
   return { type: "error", message: `Unknown execute type: ${(exec as { type: string }).type}` };
@@ -98,6 +105,77 @@ function executeUrlRedirect(
 ): PluginResult {
   const url = interpolate(exec.urlTemplate, context);
   return { type: "redirect", url };
+}
+
+// ---------------------------------------------------------------------------
+// File Write Handler
+// ---------------------------------------------------------------------------
+
+const MAX_FILE_SIZE = 1024 * 1024; // 1MB
+
+const INVALID_FILENAME_CHARS = /[\/\\:*?"<>|]/g;
+
+function sanitiseFilename(name: string): string {
+  return name.replace(INVALID_FILENAME_CHARS, "-");
+}
+
+function normalisePath(p: string): string {
+  return normalize(p).replace(/\/+$/, "") || "/";
+}
+
+async function executeFileWrite(
+  exec: FileWriteExecute,
+  context: TemplateContext
+): Promise<PluginResult> {
+  try {
+    const rawDir = interpolate(exec.directory, context);
+    const rawFilename = interpolate(exec.filename, context);
+    const content = interpolate(exec.content, context);
+    const mode = exec.mode ?? "create";
+
+    if (Buffer.byteLength(content, "utf-8") > MAX_FILE_SIZE) {
+      return { type: "error", message: "File content exceeds maximum size of 1MB" };
+    }
+
+    // Reject path traversal attempts in the raw filename before sanitisation
+    if (rawFilename.includes("..") || rawFilename.includes("/") || rawFilename.includes("\\")) {
+      return { type: "error", message: "Path traversal detected: filename contains invalid path components" };
+    }
+
+    const filename = sanitiseFilename(rawFilename);
+    const dir = normalisePath(rawDir);
+
+    try {
+      await mkdir(dir, { recursive: true });
+    } catch (err) {
+      if (err instanceof Error && "code" in err && (err as NodeJS.ErrnoException).code === "EACCES") {
+        return { type: "error", message: "Cannot create directory: permission denied" };
+      }
+      throw err;
+    }
+
+    const realDir = await realpath(dir);
+    const resolvedFile = resolve(realDir, filename);
+    if (!resolvedFile.startsWith(realDir + "/") && resolvedFile !== realDir) {
+      return { type: "error", message: "Path traversal detected: file path escapes target directory" };
+    }
+
+    if (mode === "create") {
+      try {
+        await access(resolvedFile);
+        return { type: "error", message: `File already exists: ${filename}` };
+      } catch {
+        // File doesn't exist — proceed
+      }
+    }
+
+    await writeFile(resolvedFile, content, "utf-8");
+
+    return { type: "success", message: exec.successMessage || "File saved" };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return { type: "error", message };
+  }
 }
 
 // ---------------------------------------------------------------------------

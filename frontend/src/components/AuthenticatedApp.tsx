@@ -110,17 +110,23 @@ export default function AuthenticatedApp({
       if (t === "light" || t === "dark" || t === "system") {
         setThemeState(t);
       }
-      if (prefs.swipe_left) {
-        setSwipeLeftState(prefs.swipe_left as SwipeAction);
+      // Note: api.request() runs cameliseKeys on the response, so
+      // snake_case DB keys (swipe_left, view_mode) arrive as camelCase.
+      const swipeLeft = prefs.swipeLeft ?? prefs.swipe_left;
+      if (swipeLeft) {
+        setSwipeLeftState(swipeLeft as SwipeAction);
       }
-      if (prefs.swipe_right) {
-        setSwipeRightState(prefs.swipe_right as SwipeAction);
+      const swipeRight = prefs.swipeRight ?? prefs.swipe_right;
+      if (swipeRight) {
+        setSwipeRightState(swipeRight as SwipeAction);
       }
-      if (prefs.view_mode === "condensed" || prefs.view_mode === "expanded") {
-        setViewModeState(prefs.view_mode);
+      const vm = prefs.viewMode ?? prefs.view_mode;
+      if (vm === "condensed" || vm === "expanded") {
+        setViewModeState(vm);
       }
-      if (prefs.show_images !== undefined) {
-        setShowImagesState(prefs.show_images === "true" || prefs.show_images === true);
+      const si = prefs.showImages ?? prefs.show_images;
+      if (si !== undefined) {
+        setShowImagesState(si === "true" || si === true);
       }
       setPrefsLoaded(true);
 

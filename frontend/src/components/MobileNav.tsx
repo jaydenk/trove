@@ -22,13 +22,13 @@ export default function MobileNav({
   onToggleTriage,
 }: MobileNavProps) {
   return (
-    <header className="flex lg:hidden flex-col border-b border-border dark:border-dark-border shrink-0">
+    <header className="flex lg:hidden flex-col border-b border-border dark:border-dark-border shrink-0 bg-surface dark:bg-dark pt-[env(safe-area-inset-top)]">
       <div className="flex items-center justify-between px-4 py-2">
         {/* Hamburger — 44px touch target */}
         <button
           type="button"
           onClick={onToggleSidebar}
-          className="inline-flex items-center justify-center h-11 w-11 -ml-1.5 rounded-md text-neutral-700 dark:text-neutral-300 hover:bg-hover dark:hover:bg-dark-hover transition-colors"
+          className="inline-flex items-center justify-center h-11 w-11 rounded-md text-neutral-700 dark:text-neutral-300 hover:bg-hover dark:hover:bg-dark-hover transition-colors"
           aria-label="Toggle sidebar"
         >
           <svg
@@ -49,7 +49,7 @@ export default function MobileNav({
           {currentView}
         </span>
 
-        <div className="flex items-center gap-1 -mr-1.5">
+        <div className="flex items-center gap-1">
           {/* Triage button — 44px touch target */}
           {showTriageButton && onToggleTriage && (
             <button

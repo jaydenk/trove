@@ -336,7 +336,7 @@ export default function TriageMode({
       </div>
 
       {/* Focused link card */}
-      <div className="flex-1 overflow-y-auto flex items-start justify-center px-4 lg:px-6 py-6 lg:py-10">
+      <div className="flex-1 overflow-y-auto flex items-start justify-center px-4 lg:px-6 py-6 lg:py-10 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         <div
           className={`w-full max-w-2xl transition-all duration-300 ${
             exitingIndex === currentIndex

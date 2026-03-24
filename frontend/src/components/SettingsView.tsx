@@ -64,7 +64,7 @@ export default function SettingsView({
     "text-muted dark:text-dark-muted border-transparent hover:text-neutral-700 dark:hover:text-neutral-300";
 
   return (
-    <div className="flex flex-1 flex-col min-w-0">
+    <div className="flex flex-1 flex-col min-w-0 pb-[env(safe-area-inset-bottom)]">
       {/* Header */}
       <div className="border-b border-border dark:border-dark-border shrink-0">
         <div className="px-6 pt-4 pb-0 flex items-center gap-4">

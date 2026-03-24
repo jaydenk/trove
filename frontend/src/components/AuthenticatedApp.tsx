@@ -959,7 +959,7 @@ export default function AuthenticatedApp({
             />
           ) : (
             <>
-              <main className="flex-1 overflow-y-auto">
+              <main className="flex-1 overflow-y-auto pb-[env(safe-area-inset-bottom)]">
                 {linksLoading ? (
                   <div className="flex items-center justify-center py-20">
                     <svg

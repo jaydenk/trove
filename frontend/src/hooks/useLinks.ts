@@ -31,6 +31,10 @@ export function useLinks(filters: UseLinksFilters = {}): UseLinksResult {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
+  // Monotonic counter — incrementing forces the fetch effect to re-run
+  // even when page is already 1 (e.g. refetch while on the first page).
+  const [fetchId, setFetchId] = useState(0);
+
   // Synchronous lock — prevents duplicate loadMore calls between renders
   const loadingLockRef = useRef(false);
 
@@ -97,10 +101,11 @@ export function useLinks(filters: UseLinksFilters = {}): UseLinksResult {
     [q, collectionId, tag, status],
   );
 
-  // Fetch when page or filters change
+  // Fetch when page, filters, or fetchId changes
   useEffect(() => {
     fetchPage(page, page > 1);
-  }, [page, fetchPage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, fetchPage, fetchId]);
 
   const loadMore = useCallback(() => {
     if (loadingLockRef.current || !hasMore) return;
@@ -110,11 +115,12 @@ export function useLinks(filters: UseLinksFilters = {}): UseLinksResult {
 
   const refetch = useCallback(() => {
     loadingLockRef.current = false;
-    setLinks([]);
     setPage(1);
     setHasMore(true);
-    setIsLoading(true);
-    // fetchPage will be triggered by the page/filter effect
+    // Don't clear links — keep existing data visible until the fresh fetch
+    // resolves. This prevents flash-of-empty-state (e.g. triage showing
+    // "All done!" momentarily). fetchPage(1, false) will replace links.
+    setFetchId((n) => n + 1);
   }, []);
 
   return { links, isLoading, isLoadingMore, hasMore, loadMore, refetch };

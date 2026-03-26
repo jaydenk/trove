@@ -88,7 +88,7 @@ export default function CollectionSidebar({
             className={`${itemBase} ${!isSettingsActive && selectedCollection === "archive" ? itemActive : itemIdle}`}
           >
             <span className="w-5 text-center">🗄️</span>
-            <span className="flex-1 truncate text-left">Archive</span>
+            <span className="flex-1 truncate text-left">archive</span>
           </button>
 
           {/* All links — below collections, muted styling */}

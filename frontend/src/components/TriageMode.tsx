@@ -88,6 +88,9 @@ export interface TriageModeProps {
   links: Link[];
   plugins: PluginInfo[];
   collections: Collection[];
+  hasMore: boolean;
+  isLoadingMore: boolean;
+  loadMore: () => void;
   onArchive: (id: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onPluginAction: (linkId: string, pluginId: string) => Promise<void>;
@@ -99,6 +102,9 @@ export default function TriageMode({
   links,
   plugins,
   collections,
+  hasMore,
+  isLoadingMore,
+  loadMore,
   onArchive,
   onDelete,
   onPluginAction,
@@ -112,6 +118,14 @@ export default function TriageMode({
   const [skippedIds] = useState<Set<string>>(() => new Set());
   const feedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [history, setHistory] = useState<number[]>([]);
+
+  // Load all remaining pages so triage covers the full set, not just
+  // whatever was loaded via infinite scroll before entering triage.
+  useEffect(() => {
+    if (hasMore && !isLoadingMore) {
+      loadMore();
+    }
+  }, [hasMore, isLoadingMore, loadMore]);
 
   const executablePlugins = plugins.filter(
     (p) => p.hasExecute && p.isConfigured && p.enabled,
@@ -299,7 +313,7 @@ export default function TriageMode({
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Progress header */}
-      <div className="flex items-center justify-between px-4 lg:px-6 py-3 border-b border-border dark:border-dark-border shrink-0">
+      <div className="flex items-center justify-between px-4 lg:px-6 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:pt-3 border-b border-border dark:border-dark-border shrink-0">
         <div className="flex items-center gap-3">
           <button
             type="button"

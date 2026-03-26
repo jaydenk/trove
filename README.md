@@ -72,6 +72,53 @@ Full documentation is available in the [`docs/`](docs/) directory:
 - [Browser Extension](docs/browser-extension.md) — Chrome and Safari installation and usage
 - [Self-Hosting & Deployment](docs/self-hosting.md) — Docker, Traefik, environment variables, CI/CD
 
+## Releases
+
+### 1.2.2
+
+- Fix triage mode showing "All done!" after processing a single link (refetch failed silently when already on page 1)
+- Fix triage mode only loading the first 20 links instead of the full inbox — now loads all remaining pages on entry
+- Remove duplicate mobile header during triage mode (MobileNav was rendering above TriageMode's own header)
+- Centre section heading in mobile navigation bar
+- Replace dense checklist select icon with a cleaner outlined checkbox
+- Lowercase "archive" collection name for consistency with user-defined collections
+
+### 1.2.1
+
+- Fix description text overflowing horizontally on Safari mobile
+- Fix swipe container height inflation on Safari (position: relative + overflow: hidden sizing bug)
+- Fix loading flash and scroll position reset during infinite scroll pagination
+- Add memory limits to Docker container
+
+### 1.2.0
+
+- Plugin health checks — plugins can define a `healthCheck` block to verify external service connectivity
+- Plugin test button — test plugin execution from settings without affecting real links
+- Dropdown config fields — plugins can define `options` arrays for config values
+- New shipped plugins: Obsidian and Reminders
+- Template engine enhancements: array interpolation, filter chaining, default filter
+
+### 1.1.0
+
+- Bump to project CLAUDE.md
+
+### 1.0.0
+
+- Infinite scroll replacing pagination
+- Triage mode for rapid inbox processing with keyboard shortcuts
+- PWA support (Add to Dock / Add to Home Screen)
+- Expanded view with text excerpts and image thumbnails
+- Dark mode (light, dark, system)
+- Full-text search with FTS5 and highlighted snippets
+- Bulk actions (select, archive, delete, move)
+- Customisable swipe actions on mobile
+- Right-click context menu on desktop
+- Plugin system with Reader and Things plugins
+- Browser extensions (Chrome + Safari)
+- MCP server for Claude integration
+- Multi-user auth with API tokens
+- Single-container Docker deployment with CI/CD to GHCR
+
 ## Licence
 
 [MIT](LICENCE)

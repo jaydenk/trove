@@ -542,20 +542,20 @@ export default function AuthenticatedApp({
   const handleTriageArchive = useCallback(
     async (id: string) => {
       await api.links.archive(id);
-      refetchLinks();
+      // Don't refetchLinks here — TriageMode's performAction calls
+      // onRefresh after the exit animation to avoid double-refetch.
       refetchCollections();
     },
-    [refetchLinks, refetchCollections],
+    [refetchCollections],
   );
 
   const handleTriageDelete = useCallback(
     async (id: string) => {
       await api.links.delete(id);
       if (selectedLinkId === id) setSelectedLinkId(null);
-      refetchLinks();
       refetchCollections();
     },
-    [selectedLinkId, refetchLinks, refetchCollections],
+    [selectedLinkId, refetchCollections],
   );
 
   const handleTriagePluginAction = useCallback(
@@ -570,8 +570,9 @@ export default function AuthenticatedApp({
       // Archive the link so it leaves the inbox — the action history
       // still records that it was sent to the plugin.
       await api.links.archive(linkId);
+      refetchCollections();
     },
-    [],
+    [refetchCollections],
   );
 
   const handleTriageExit = useCallback(() => {
@@ -772,7 +773,7 @@ export default function AuthenticatedApp({
   const currentViewName = (() => {
     if (showSettings) return "Settings";
     if (isSearching) return "Search Results";
-    if (selectedCollection === "archive") return "Archive";
+    if (selectedCollection === "archive") return "archive";
     if (selectedCollection) {
       const col = collections.find((c) => c.id === selectedCollection);
       return col ? col.name : "Collection";
@@ -865,28 +866,30 @@ export default function AuthenticatedApp({
         </div>
       ) : (
         <div className="flex flex-1 flex-col min-w-0">
-          {/* Mobile nav bar */}
-          <MobileNav
-            onToggleSidebar={() => setIsMobileSidebarOpen((v) => !v)}
-            onOpenAddModal={() => setIsAddModalOpen(true)}
-            currentView={triageMode ? "Triage" : currentViewName}
-            searchQuery={searchQuery}
-            onSearchChange={triageMode ? undefined : (v) => {
-              setSearchQuery(v);
-              setSelectedLinkId(null);
-            }}
-            bulkModeActive={bulkModeActive}
-            onToggleBulkMode={() => {
-              if (bulkModeActive) {
-                setSelectedLinkIds(new Set());
-                setBulkModeActive(false);
-              } else {
-                setBulkModeActive(true);
-              }
-            }}
-            showTriageButton={!triageMode && links.length > 0}
-            onToggleTriage={() => setTriageMode(true)}
-          />
+          {/* Mobile nav bar — hidden during triage (TriageMode has its own header) */}
+          {!triageMode && (
+            <MobileNav
+              onToggleSidebar={() => setIsMobileSidebarOpen((v) => !v)}
+              onOpenAddModal={() => setIsAddModalOpen(true)}
+              currentView={currentViewName}
+              searchQuery={searchQuery}
+              onSearchChange={(v) => {
+                setSearchQuery(v);
+                setSelectedLinkId(null);
+              }}
+              bulkModeActive={bulkModeActive}
+              onToggleBulkMode={() => {
+                if (bulkModeActive) {
+                  setSelectedLinkIds(new Set());
+                  setBulkModeActive(false);
+                } else {
+                  setBulkModeActive(true);
+                }
+              }}
+              showTriageButton={links.length > 0}
+              onToggleTriage={() => setTriageMode(true)}
+            />
+          )}
 
           {/* Desktop header */}
           <header className="hidden lg:flex border-b border-border dark:border-dark-border px-6 py-4 items-center justify-between shrink-0">
@@ -930,9 +933,10 @@ export default function AuthenticatedApp({
                     : "border border-border dark:border-dark-border text-neutral-600 dark:text-neutral-400 hover:bg-hover dark:hover:bg-dark-hover"
                 }`}
               >
-                {/* Checkbox list icon */}
+                {/* Outlined checkbox with checkmark */}
                 <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M3.5 2A1.5 1.5 0 002 3.5v3A1.5 1.5 0 003.5 8h3A1.5 1.5 0 008 6.5v-3A1.5 1.5 0 006.5 2h-3zm3.354 1.854a.5.5 0 00-.708-.708L4.5 4.793l-.646-.647a.5.5 0 10-.708.708l1 1a.5.5 0 00.708 0l2-2zM10.5 4a.75.75 0 000 1.5h6a.75.75 0 000-1.5h-6zM10.5 14.5a.75.75 0 000 1.5h6a.75.75 0 000-1.5h-6zM10.5 9.25a.75.75 0 000 1.5h6a.75.75 0 000-1.5h-6zM3.5 12A1.5 1.5 0 002 13.5v3A1.5 1.5 0 003.5 18h3A1.5 1.5 0 008 16.5v-3A1.5 1.5 0 006.5 12h-3zm3.354 1.854a.5.5 0 00-.708-.708L4.5 14.793l-.646-.647a.5.5 0 10-.708.708l1 1a.5.5 0 00.708 0l2-2zM3.5 7A1.5 1.5 0 002 8.5v3A1.5 1.5 0 003.5 13h3A1.5 1.5 0 008 11.5v-3A1.5 1.5 0 006.5 7h-3z" clipRule="evenodd" />
+                  <path fillRule="evenodd" d="M3 4.5A1.5 1.5 0 014.5 3h11A1.5 1.5 0 0117 4.5v11a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 013 15.5v-11zm1.5 0v11h11v-11h-11z" clipRule="evenodd" />
+                  <path fillRule="evenodd" d="M13.78 7.47a.75.75 0 010 1.06l-4.25 4.25a.75.75 0 01-1.06 0L6.22 10.53a.75.75 0 011.06-1.06L9 11.19l3.72-3.72a.75.75 0 011.06 0z" clipRule="evenodd" />
                 </svg>
                 {bulkModeActive ? "Cancel" : "Select"}
               </button>
@@ -958,6 +962,9 @@ export default function AuthenticatedApp({
               links={links}
               plugins={plugins}
               collections={collections}
+              hasMore={hasMore}
+              isLoadingMore={isLoadingMore}
+              loadMore={loadMore}
               onArchive={handleTriageArchive}
               onDelete={handleTriageDelete}
               onPluginAction={handleTriagePluginAction}

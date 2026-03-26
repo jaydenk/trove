@@ -13,7 +13,10 @@ export interface UseLinksFilters {
 
 export interface UseLinksResult {
   links: Link[];
+  /** True only on initial load / filter change (no links to show yet) */
   isLoading: boolean;
+  /** True when fetching the next page (links already visible) */
+  isLoadingMore: boolean;
   hasMore: boolean;
   loadMore: () => void;
   refetch: () => void;
@@ -26,6 +29,10 @@ export function useLinks(filters: UseLinksFilters = {}): UseLinksResult {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  // Synchronous lock — prevents duplicate loadMore calls between renders
+  const loadingLockRef = useRef(false);
 
   // Track current filters to detect changes
   const filtersRef = useRef({ q, collectionId, tag, status });
@@ -40,16 +47,22 @@ export function useLinks(filters: UseLinksFilters = {}): UseLinksResult {
       prev.status !== status
     ) {
       filtersRef.current = { q, collectionId, tag, status };
+      loadingLockRef.current = false;
       setLinks([]);
       setPage(1);
       setHasMore(true);
+      setIsLoading(true);
     }
   }, [q, collectionId, tag, status]);
 
   // Fetch the current page
   const fetchPage = useCallback(
     async (pageNum: number, append: boolean) => {
-      setIsLoading(true);
+      if (append) {
+        setIsLoadingMore(true);
+      } else {
+        setIsLoading(true);
+      }
       try {
         const res = await api.links.list({
           q: q || undefined,
@@ -76,7 +89,9 @@ export function useLinks(filters: UseLinksFilters = {}): UseLinksResult {
         }
         setHasMore(false);
       } finally {
+        loadingLockRef.current = false;
         setIsLoading(false);
+        setIsLoadingMore(false);
       }
     },
     [q, collectionId, tag, status],
@@ -88,17 +103,19 @@ export function useLinks(filters: UseLinksFilters = {}): UseLinksResult {
   }, [page, fetchPage]);
 
   const loadMore = useCallback(() => {
-    if (!isLoading && hasMore) {
-      setPage((p) => p + 1);
-    }
-  }, [isLoading, hasMore]);
+    if (loadingLockRef.current || !hasMore) return;
+    loadingLockRef.current = true;
+    setPage((p) => p + 1);
+  }, [hasMore]);
 
   const refetch = useCallback(() => {
+    loadingLockRef.current = false;
     setLinks([]);
     setPage(1);
     setHasMore(true);
+    setIsLoading(true);
     // fetchPage will be triggered by the page/filter effect
   }, []);
 
-  return { links, isLoading, hasMore, loadMore, refetch };
+  return { links, isLoading, isLoadingMore, hasMore, loadMore, refetch };
 }

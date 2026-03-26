@@ -51,6 +51,12 @@ function InfiniteScrollSentinel({
   onLoadMore: () => void;
 }) {
   const sentinelRef = useRef<HTMLDivElement>(null);
+  // Keep mutable refs so the observer callback always reads fresh values
+  // without causing the observer to be torn down and recreated.
+  const isLoadingRef = useRef(isLoading);
+  const onLoadMoreRef = useRef(onLoadMore);
+  isLoadingRef.current = isLoading;
+  onLoadMoreRef.current = onLoadMore;
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -58,8 +64,8 @@ function InfiniteScrollSentinel({
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && !isLoading) {
-          onLoadMore();
+        if (entry.isIntersecting && !isLoadingRef.current) {
+          onLoadMoreRef.current();
         }
       },
       { rootMargin: "200px" },
@@ -67,7 +73,7 @@ function InfiniteScrollSentinel({
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, [hasMore, isLoading, onLoadMore]);
+  }, [hasMore]);
 
   if (!hasMore) return null;
 
@@ -307,6 +313,7 @@ export default function AuthenticatedApp({
   const {
     links,
     isLoading: linksLoading,
+    isLoadingMore,
     hasMore,
     loadMore,
     refetch: refetchLinks,
@@ -960,7 +967,7 @@ export default function AuthenticatedApp({
           ) : (
             <>
               <main className="flex-1 overflow-y-auto pb-[env(safe-area-inset-bottom)]">
-                {linksLoading ? (
+                {linksLoading && links.length === 0 ? (
                   <div className="flex items-center justify-center py-20">
                     <svg
                       className="animate-spin h-5 w-5 text-muted dark:text-dark-muted"
@@ -982,7 +989,7 @@ export default function AuthenticatedApp({
                       />
                     </svg>
                   </div>
-                ) : links.length === 0 ? (
+                ) : !linksLoading && links.length === 0 ? (
                   <div className="flex items-center justify-center py-20">
                     <p className="text-sm text-muted dark:text-dark-muted">
                       No links found
@@ -990,53 +997,54 @@ export default function AuthenticatedApp({
                   </div>
                 ) : (
                   <div className="flex flex-col">
-                    {links.map((link, index) => (
-                      <div key={link.id}>
-                        <LinkCard
-                          link={link}
-                          isSelected={link.id === selectedLinkId}
-                          isFocused={index === focusedLinkIndex}
-                          onClick={() => setSelectedLinkId(link.id)}
-                          plugins={plugins}
-                          isSelectable={isBulkMode}
-                          isChecked={selectedLinkIds.has(link.id)}
-                          onToggleSelect={() => toggleLinkSelection(link.id)}
-                          onLongPress={() => handleLongPress(link.id)}
-                          onContextMenu={handleContextMenu}
-                          onArchive={handleContextArchive}
-                          onDelete={handleContextDelete}
-                          onPluginAction={handleContextPluginAction}
-                          swipeLeftAction={swipeLeftAction}
-                          swipeRightAction={swipeRightAction}
-                          onSwipeAction={handleSwipeAction}
-                          viewMode={viewMode}
-                          showImages={showImages}
-                        />
-                        {/* FTS snippets use dangerouslySetInnerHTML because SQLite
-                            snippet() returns <b> tags for match highlighting.
-                            sanitiseSnippet() escapes all HTML except <b>/<\/b>. */}
-                        {isSearching && link.snippet && (
-                          <div className="px-4 pb-2 -mt-px border-b border-border dark:border-dark-border">
-                            <p
-                              className="pl-6 text-xs text-muted dark:text-dark-muted line-clamp-2 [&>b]:font-semibold [&>b]:text-neutral-700 dark:[&>b]:text-neutral-300"
-                              dangerouslySetInnerHTML={{
-                                __html: sanitiseSnippet(link.snippet),
-                              }}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                    {links.map((link, index) => {
+                      // FTS snippets use sanitiseSnippet() which escapes all
+                      // HTML except <b>/<\/b> — safe for highlighted rendering.
+                      const snippet = isSearching && link.snippet
+                        ? sanitiseSnippet(link.snippet)
+                        : null;
+                      return (
+                        <div key={link.id}>
+                          <LinkCard
+                            link={link}
+                            isSelected={link.id === selectedLinkId}
+                            isFocused={index === focusedLinkIndex}
+                            onClick={() => setSelectedLinkId(link.id)}
+                            plugins={plugins}
+                            isSelectable={isBulkMode}
+                            isChecked={selectedLinkIds.has(link.id)}
+                            onToggleSelect={() => toggleLinkSelection(link.id)}
+                            onLongPress={() => handleLongPress(link.id)}
+                            onContextMenu={handleContextMenu}
+                            onArchive={handleContextArchive}
+                            onDelete={handleContextDelete}
+                            onPluginAction={handleContextPluginAction}
+                            swipeLeftAction={swipeLeftAction}
+                            swipeRightAction={swipeRightAction}
+                            onSwipeAction={handleSwipeAction}
+                            viewMode={viewMode}
+                            showImages={showImages}
+                          />
+                          {snippet && (
+                            <div className="px-4 pb-2 -mt-px border-b border-border dark:border-dark-border">
+                              <p
+                                className="pl-6 text-xs text-muted dark:text-dark-muted line-clamp-2 [&>b]:font-semibold [&>b]:text-neutral-700 dark:[&>b]:text-neutral-300"
+                                dangerouslySetInnerHTML={{ __html: snippet }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {/* Infinite scroll sentinel — inside the scroll container */}
+                    <InfiniteScrollSentinel
+                      hasMore={hasMore}
+                      isLoading={isLoadingMore}
+                      onLoadMore={loadMore}
+                    />
                   </div>
                 )}
               </main>
-
-              {/* Infinite scroll sentinel */}
-              <InfiniteScrollSentinel
-                hasMore={hasMore}
-                isLoading={linksLoading}
-                onLoadMore={loadMore}
-              />
 
               {/* Keyboard shortcut hints when a link is focused */}
               {focusedLinkIndex >= 0 && focusedLinkIndex < links.length && (

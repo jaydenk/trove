@@ -403,7 +403,7 @@ export default function LinkCard({
   const swipeLabel = swipeActionLabel(activeAction, plugins);
 
   return (
-    <div className="relative overflow-hidden">
+    <div className="relative overflow-hidden flex flex-col">
       {/* Swipe background layer (mobile only) */}
       {isMobile && offset !== 0 && (
         <div
@@ -467,7 +467,7 @@ export default function LinkCard({
         }`}
       >
         <div className={`flex ${viewMode === "expanded" && showImages && link.imageUrl ? "gap-3" : ""}`}>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 overflow-hidden">
             {/* Row 1: checkbox + favicon + title + extraction status + plugin actions */}
             <div className="flex items-center gap-2 min-w-0">
               {(isSelectable || isChecked) && (

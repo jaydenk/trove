@@ -372,7 +372,7 @@ export async function handleIngest(
       }
 
       // Fire async extraction
-      extractAndUpdate(db, link.id, url);
+      extractAndUpdate(db, link.id, url, userId);
 
       created++;
     } catch (error) {

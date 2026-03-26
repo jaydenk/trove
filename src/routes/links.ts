@@ -118,7 +118,7 @@ links.post("/api/links", async (c) => {
       extraction_status: "completed",
     });
   } else {
-    extractAndUpdate(db, link.id, body.url);
+    extractAndUpdate(db, link.id, body.url, user.id);
   }
 
   // Re-fetch with tags
@@ -250,7 +250,7 @@ links.post("/api/links/:id/extract", (c) => {
   updateExtraction(db, id, { extraction_status: "pending" });
 
   // Fire-and-forget extraction
-  extractAndUpdate(db, id, existing.url);
+  extractAndUpdate(db, id, existing.url, user.id);
 
   return c.json({ extractionStatus: "pending" });
 });

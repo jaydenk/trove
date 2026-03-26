@@ -150,7 +150,7 @@ importExport.post("/api/import", async (c) => {
     }
 
     // Fire-and-forget extraction
-    extractAndUpdate(db, link.id, item.url);
+    extractAndUpdate(db, link.id, item.url, user.id);
 
     imported++;
   }

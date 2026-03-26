@@ -2,6 +2,7 @@ import { JSDOM } from "jsdom";
 import { Readability } from "@mozilla/readability";
 import { Database } from "bun:sqlite";
 import { updateExtraction } from "../db/queries/links";
+import { emitLinkEvent } from "../lib/events";
 
 export interface ExtractionResult {
   title: string;
@@ -144,7 +145,8 @@ export async function extractContent(url: string): Promise<ExtractionResult> {
 export function extractAndUpdate(
   db: Database,
   linkId: string,
-  url: string
+  url: string,
+  userId: string,
 ): void {
   extractContent(url)
     .then((result) => {
@@ -158,10 +160,12 @@ export function extractAndUpdate(
         domain: result.domain,
         extraction_status: "completed",
       });
+      emitLinkEvent({ type: "link:updated", linkId, userId });
     })
     .catch(() => {
       updateExtraction(db, linkId, {
         extraction_status: "failed",
       });
+      emitLinkEvent({ type: "link:updated", linkId, userId });
     });
 }

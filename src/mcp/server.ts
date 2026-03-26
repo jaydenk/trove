@@ -331,7 +331,7 @@ server.registerTool(
       }
 
       // Fire extraction async — don't await
-      extractAndUpdate(db, link.id, url);
+      extractAndUpdate(db, link.id, url, userId);
 
       return {
         content: [{ type: "text" as const, text: JSON.stringify(link, null, 2) }],

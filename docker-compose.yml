@@ -11,6 +11,12 @@ services:
       - /etc/localtime:/etc/localtime:ro
     env_file:
       - .env
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+        reservations:
+          memory: 128m
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3737/health"]
       interval: 30s

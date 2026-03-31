@@ -43,7 +43,7 @@ export default function CollectionSidebar({
   return (
     <aside className="w-56 shrink-0 border-r border-border dark:border-dark-border bg-surface dark:bg-dark flex flex-col h-dvh overflow-y-auto">
       {/* Logo / header */}
-      <div className="px-4 py-4">
+      <div className="px-4 py-4 pt-[max(1rem,env(safe-area-inset-top))]">
         <button
           type="button"
           onClick={() => onSelectCollection(inboxCollectionId)}
@@ -161,7 +161,7 @@ export default function CollectionSidebar({
 
       {/* User section */}
       {userName && (
-        <div className="px-4 pb-4 pt-1 shrink-0">
+        <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-1 shrink-0">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 min-w-0">
               <span className="text-xs text-muted dark:text-dark-muted truncate">

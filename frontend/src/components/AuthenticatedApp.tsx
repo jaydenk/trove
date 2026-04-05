@@ -476,11 +476,16 @@ export default function AuthenticatedApp({
         if (result.type === "redirect" && result.url) {
           window.open(result.url, "_blank", "noopener,noreferrer");
         }
+        // Successful actions auto-archive on the backend — refetch to reflect
+        if (result.type !== "error") {
+          refetchLinks();
+          refetchCollections();
+        }
       } catch {
         // Silently fail
       }
     },
-    [],
+    [refetchLinks, refetchCollections],
   );
 
   const handleContextCopyUrl = useCallback(
@@ -567,9 +572,7 @@ export default function AuthenticatedApp({
       if (result.type === "redirect" && result.url) {
         window.open(result.url, "_blank", "noopener,noreferrer");
       }
-      // Archive the link so it leaves the inbox — the action history
-      // still records that it was sent to the plugin.
-      await api.links.archive(linkId);
+      // Backend auto-archives on successful action
       refetchCollections();
     },
     [refetchCollections],
@@ -1026,6 +1029,7 @@ export default function AuthenticatedApp({
                             onArchive={handleContextArchive}
                             onDelete={handleContextDelete}
                             onPluginAction={handleContextPluginAction}
+                            onActionSuccess={() => { refetchLinks(); refetchCollections(); }}
                             swipeLeftAction={swipeLeftAction}
                             swipeRightAction={swipeRightAction}
                             onSwipeAction={handleSwipeAction}

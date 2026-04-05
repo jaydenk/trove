@@ -86,9 +86,11 @@ function ExtractionIcon({ status }: { status: string }) {
 function PluginActionButton({
   link,
   plugin,
+  onSuccess,
 }: {
   link: Link;
   plugin: PluginInfo;
+  onSuccess?: () => void;
 }) {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
 
@@ -103,6 +105,7 @@ function PluginActionButton({
         window.open(result.url, "_blank", "noopener,noreferrer");
       }
       setStatus("success");
+      onSuccess?.();
     } catch {
       setStatus("error");
     }
@@ -163,6 +166,7 @@ export interface LinkCardProps {
   onArchive?: (link: Link) => void;
   onDelete?: (link: Link) => void;
   onPluginAction?: (link: Link, plugin: PluginInfo) => void;
+  onActionSuccess?: () => void;
   swipeLeftAction?: SwipeAction;
   swipeRightAction?: SwipeAction;
   onSwipeAction?: (link: Link, action: SwipeAction) => void;
@@ -312,6 +316,7 @@ export default function LinkCard({
   onArchive,
   onDelete,
   onPluginAction,
+  onActionSuccess,
   swipeLeftAction = "delete",
   swipeRightAction = "archive",
   onSwipeAction,
@@ -517,7 +522,7 @@ export default function LinkCard({
               {executablePlugins && executablePlugins.length > 0 && (
                 <span className="ml-auto flex items-center gap-0.5 shrink-0">
                   {executablePlugins.map((p) => (
-                    <PluginActionButton key={p.id} link={link} plugin={p} />
+                    <PluginActionButton key={p.id} link={link} plugin={p} onSuccess={onActionSuccess} />
                   ))}
                 </span>
               )}

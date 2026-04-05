@@ -2,7 +2,7 @@
 
 ## Versioning
 
-Current version: **1.2.4**
+Current version: **1.2.5**
 
 Version is defined in both `package.json` (root) and `frontend/package.json`. Both must be updated together. The frontend reads the version at build time via Vite's `define` (see `frontend/vite.config.ts`).
 

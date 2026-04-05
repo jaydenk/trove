@@ -204,6 +204,10 @@ export function listLinks(
   if (filters.status) {
     conditions.push("l.status = ?");
     params.push(filters.status);
+  } else {
+    // When no explicit status filter is provided, exclude archived links.
+    // The archive view passes status='archived' explicitly, so it still works.
+    conditions.push("l.status != 'archived'");
   }
 
   if (filters.source) {

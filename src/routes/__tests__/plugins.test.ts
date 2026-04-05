@@ -480,6 +480,74 @@ describe("plugin routes", () => {
       expect(body.error.message).toContain("READWISE_TOKEN");
     });
 
+    test("auto-archives link after successful action", async () => {
+      seedPlugins();
+      insertLink("link-autoarchive", "https://example.com/auto", "Auto Archive Test");
+      const app = createApp();
+
+      // Verify link starts as 'saved'
+      const before = db
+        .query<{ status: string }, [string]>("SELECT status FROM links WHERE id = ?")
+        .get("link-autoarchive")!;
+      expect(before.status).toBe("saved");
+
+      await app.request("/api/links/link-autoarchive/actions/things", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${userToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({}),
+      });
+
+      // Verify link is now archived
+      const after = db
+        .query<{ status: string }, [string]>("SELECT status FROM links WHERE id = ?")
+        .get("link-autoarchive")!;
+      expect(after.status).toBe("archived");
+    });
+
+    test("does not archive link after failed action", async () => {
+      seedPlugins();
+      setPluginConfig(db, userId, "reader", { READWISE_TOKEN: "test-token" });
+      insertLink("link-no-archive", "https://example.com/nope", "No Archive Test");
+      const app = createApp();
+
+      // Mock fetch to return a failing API response so executePlugin returns { type: "error" }
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = mock(() =>
+        Promise.resolve(new Response("Unauthorized", { status: 401 }))
+      ) as any;
+
+      try {
+        const res = await app.request("/api/links/link-no-archive/actions/reader", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${userToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({}),
+        });
+
+        expect(res.status).toBe(200);
+        const body = await res.json();
+        expect(body.type).toBe("error");
+
+        // Verify the link was NOT archived
+        const after = db
+          .query<{ status: string }, [string]>("SELECT status FROM links WHERE id = ?")
+          .get("link-no-archive")!;
+        expect(after.status).toBe("saved");
+
+        // Verify the failed action was still recorded
+        const actions = listActionsForLink(db, "link-no-archive");
+        expect(actions.length).toBe(1);
+        expect(actions[0].status).toBe("error");
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+
     test("returns 404 for non-existent link", async () => {
       seedPlugins();
       const app = createApp();

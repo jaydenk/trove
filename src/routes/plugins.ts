@@ -11,7 +11,7 @@ import {
   isPluginEnabledForUser,
 } from "../db/queries/plugins";
 import { getPluginConfig, setPluginConfig } from "../db/queries/pluginConfig";
-import { getLink } from "../db/queries/links";
+import { getLink, archiveLink } from "../db/queries/links";
 import { recordAction } from "../db/queries/linkActions";
 import { validateManifest } from "../plugins/manifest";
 import type { PluginManifest } from "../plugins/manifest";
@@ -334,6 +334,12 @@ plugins.post("/api/links/:id/actions/:pluginId", async (c) => {
     status: result.type,
     message,
   });
+
+  // Auto-archive on successful action
+  if (result.type !== "error") {
+    archiveLink(db, user.id, linkId);
+    emitLinkEvent({ type: "link:archived", linkId, userId: user.id });
+  }
 
   return c.json(result);
 });

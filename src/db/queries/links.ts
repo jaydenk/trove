@@ -21,8 +21,15 @@ export interface Link {
   updated_at: string;
 }
 
+export interface ActionBadge {
+  pluginId: string;
+  pluginName: string;
+  pluginIcon: string;
+}
+
 export interface LinkWithTags extends Link {
   tags: { id: string; name: string }[];
+  actions?: ActionBadge[];
 }
 
 export interface CreateLinkInput {
@@ -246,6 +253,32 @@ export function listLinks(
     const tags = getTagsForLink(db, row.id);
     return { ...row, tags };
   });
+
+  // Attach action badges for archived links
+  if (filters.status === "archived") {
+    for (const link of data) {
+      const actions = db
+        .query<
+          { plugin_id: string; plugin_name: string; plugin_icon: string },
+          [string]
+        >(
+          `SELECT la.plugin_id, p.name AS plugin_name, p.icon AS plugin_icon
+           FROM link_actions la
+           INNER JOIN plugins p ON p.id = la.plugin_id
+           WHERE la.link_id = ? AND la.status != 'error'
+           GROUP BY la.plugin_id`
+        )
+        .all(link.id);
+
+      if (actions.length > 0) {
+        link.actions = actions.map((a) => ({
+          pluginId: a.plugin_id,
+          pluginName: a.plugin_name,
+          pluginIcon: a.plugin_icon,
+        }));
+      }
+    }
+  }
 
   return {
     data,

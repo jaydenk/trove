@@ -13,6 +13,8 @@ import {
   archiveLink,
   updateExtraction,
 } from "../queries/links";
+import { recordAction } from "../queries/linkActions";
+import { insertPlugin } from "../queries/plugins";
 
 describe("links", () => {
   let db: Database;
@@ -324,5 +326,59 @@ describe("links", () => {
     expect(updated!.content).toBe("Full page content here");
     expect(updated!.favicon_url).toBe("https://example.com/favicon.ico");
     expect(updated!.extraction_status).toBe("done");
+  });
+
+  test("archived links include deduplicated action badges", () => {
+    const link = createLink(db, userId, {
+      url: "https://example.com/with-actions",
+      title: "Actioned Link",
+    });
+
+    // Insert a plugin so we can reference it
+    insertPlugin(db, {
+      id: "reader",
+      name: "Readwise Reader",
+      icon: "📖",
+      description: "Send to Reader",
+      version: "1.0.0",
+      direction: "export" as const,
+      config: {},
+      execute: {
+        type: "url-redirect" as const,
+        actionLabel: "Send to Reader",
+        urlTemplate: "https://reader.example.com/{{link.url}}",
+      },
+    }, true);
+
+    // Record two successful actions for the same plugin (should deduplicate)
+    recordAction(db, { linkId: link.id, pluginId: "reader", status: "success", message: "Sent" });
+    recordAction(db, { linkId: link.id, pluginId: "reader", status: "success", message: "Sent again" });
+
+    // Record a failed action (should be excluded)
+    recordAction(db, { linkId: link.id, pluginId: "reader", status: "error", message: "Failed" });
+
+    // Archive the link
+    archiveLink(db, userId, link.id);
+
+    // List archived links
+    const result = listLinks(db, userId, { status: "archived" });
+    expect(result.data.length).toBe(1);
+    expect(result.data[0].actions).toBeDefined();
+    expect(result.data[0].actions!.length).toBe(1); // Deduplicated
+    expect(result.data[0].actions![0].pluginId).toBe("reader");
+    expect(result.data[0].actions![0].pluginName).toBe("Readwise Reader");
+    expect(result.data[0].actions![0].pluginIcon).toBe("📖");
+  });
+
+  test("non-archived links do not include actions array", () => {
+    const link = createLink(db, userId, {
+      url: "https://example.com/no-actions",
+      title: "Normal Link",
+    });
+
+    const result = listLinks(db, userId);
+    const found = result.data.find((l) => l.id === link.id);
+    expect(found).toBeDefined();
+    expect(found!.actions).toBeUndefined();
   });
 });

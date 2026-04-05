@@ -29,7 +29,7 @@ export interface Link {
   createdAt: string;
   updatedAt: string;
   tags?: Tag[];
-  actions?: LinkAction[];
+  actions?: (LinkAction | ActionBadge)[];
   snippet?: string; // FTS search snippet
 }
 
@@ -93,6 +93,12 @@ export interface LinkAction {
   status: string;
   message: string | null;
   createdAt: string;
+}
+
+export interface ActionBadge {
+  pluginId: string;
+  pluginName: string;
+  pluginIcon: string;
 }
 
 export interface PaginatedResponse<T> {

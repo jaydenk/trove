@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { api } from "../api";
-import type { Link, PluginInfo } from "../api";
+import type { Link, PluginInfo, ActionBadge, LinkAction } from "../api";
 
 // ---------------------------------------------------------------------------
 // Relative time helper
@@ -552,6 +552,26 @@ export default function LinkCard({
                 ))}
               </div>
             )}
+
+            {/* Row 4: action badges (archive view only) */}
+            {(() => {
+              const isActionBadge = (a: LinkAction | ActionBadge): a is ActionBadge => "pluginName" in a;
+              const badges = link.actions?.filter(isActionBadge);
+              if (!badges || badges.length === 0) return null;
+              return (
+                <div className="mt-1.5 pl-6 flex flex-wrap gap-1">
+                  {badges.map((action) => (
+                    <span
+                      key={action.pluginId}
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[11px] leading-tight rounded bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400"
+                    >
+                      <span>{action.pluginIcon}</span>
+                      Sent to {action.pluginName}
+                    </span>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Image thumbnail */}

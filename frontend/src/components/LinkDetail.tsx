@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { api, ApiError } from "../api";
-import type { Link, Collection, PluginInfo } from "../api";
+import type { Link, Collection, PluginInfo, LinkAction, ActionBadge } from "../api";
 
 // ---------------------------------------------------------------------------
 // Spinner
@@ -799,7 +799,8 @@ export default function LinkDetail({
 
         {/* Action history */}
         {(() => {
-          const actions = link.actions;
+          const isLinkAction = (a: LinkAction | ActionBadge): a is LinkAction => "id" in a && "status" in a;
+          const actions = link.actions?.filter(isLinkAction);
           return (
             <>
               <div className="border-t border-border dark:border-dark-border" />

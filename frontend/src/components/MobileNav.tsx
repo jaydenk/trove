@@ -8,6 +8,8 @@ export interface MobileNavProps {
   onToggleBulkMode: () => void;
   showTriageButton?: boolean;
   onToggleTriage?: () => void;
+  sortOrder?: "asc" | "desc";
+  onToggleSortOrder?: () => void;
 }
 
 export default function MobileNav({
@@ -20,6 +22,8 @@ export default function MobileNav({
   onToggleBulkMode,
   showTriageButton,
   onToggleTriage,
+  sortOrder,
+  onToggleSortOrder,
 }: MobileNavProps) {
   return (
     <header className="flex lg:hidden flex-col border-b border-border dark:border-dark-border shrink-0 bg-surface dark:bg-dark pt-[env(safe-area-inset-top)]">
@@ -109,8 +113,8 @@ export default function MobileNav({
 
       {/* Mobile search bar */}
       {onSearchChange && (
-        <div className="px-4 pb-2">
-          <div className="relative flex items-center">
+        <div className="px-4 pb-2 flex items-center gap-2">
+          <div className="relative flex items-center flex-1">
             <svg
               className="absolute left-2.5 h-4 w-4 text-muted dark:text-dark-muted pointer-events-none"
               viewBox="0 0 20 20"
@@ -130,6 +134,25 @@ export default function MobileNav({
               className="w-full h-9 pl-8 pr-3 text-sm rounded-md border border-border dark:border-dark-border bg-surface dark:bg-dark text-neutral-900 dark:text-neutral-100 placeholder:text-muted dark:placeholder:text-dark-muted focus:outline-none focus:ring-1 focus:ring-neutral-400 dark:focus:ring-neutral-600 transition-colors"
             />
           </div>
+          {onToggleSortOrder && (
+            <button
+              type="button"
+              onClick={onToggleSortOrder}
+              className="inline-flex items-center justify-center h-9 w-9 shrink-0 rounded-md border border-border dark:border-dark-border text-neutral-600 dark:text-neutral-400 hover:bg-hover dark:hover:bg-dark-hover transition-colors"
+              aria-label={sortOrder === "desc" ? "Newest first" : "Oldest first"}
+              title={sortOrder === "desc" ? "Newest first" : "Oldest first"}
+            >
+              {sortOrder === "desc" ? (
+                <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 3a.75.75 0 01.75.75v10.638l3.96-4.158a.75.75 0 111.08 1.04l-5.25 5.5a.75.75 0 01-1.08 0l-5.25-5.5a.75.75 0 111.08-1.04l3.96 4.158V3.75A.75.75 0 0110 3z" clipRule="evenodd" />
+                </svg>
+              ) : (
+                <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 17a.75.75 0 01-.75-.75V5.612L5.29 9.77a.75.75 0 01-1.08-1.04l5.25-5.5a.75.75 0 011.08 0l5.25 5.5a.75.75 0 01-1.08 1.04l-3.96-4.158V16.25A.75.75 0 0110 17z" clipRule="evenodd" />
+                </svg>
+              )}
+            </button>
+          )}
         </div>
       )}
     </header>

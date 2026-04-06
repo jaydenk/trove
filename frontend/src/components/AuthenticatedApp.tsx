@@ -156,6 +156,7 @@ export default function AuthenticatedApp({
   const [swipeRightAction, setSwipeRightState] = useState<SwipeAction>("archive");
   const [viewMode, setViewModeState] = useState<"condensed" | "expanded">("condensed");
   const [showImages, setShowImagesState] = useState(true);
+  const [sortOrder, setSortOrderState] = useState<"asc" | "desc">("desc");
   const [prefsLoaded, setPrefsLoaded] = useState(false);
 
   // Load preferences from the server on mount
@@ -182,6 +183,10 @@ export default function AuthenticatedApp({
       const si = prefs.showImages ?? prefs.show_images;
       if (si !== undefined) {
         setShowImagesState(si === "true");
+      }
+      const so = prefs.sortOrder ?? prefs.sort_order;
+      if (so === "asc" || so === "desc") {
+        setSortOrderState(so);
       }
       setPrefsLoaded(true);
 
@@ -219,6 +224,15 @@ export default function AuthenticatedApp({
     setShowImagesState(value);
     api.preferences.set({ show_images: String(value) }).catch(() => {});
   }, []);
+
+  const setSortOrder = useCallback((value: "asc" | "desc") => {
+    setSortOrderState(value);
+    api.preferences.set({ sort_order: value }).catch(() => {});
+  }, []);
+
+  const toggleSortOrder = useCallback(() => {
+    setSortOrder(sortOrder === "desc" ? "asc" : "desc");
+  }, [sortOrder, setSortOrder]);
 
   // Apply theme to the document
   useEffect(() => {
@@ -296,18 +310,18 @@ export default function AuthenticatedApp({
 
   const linkFilters = (() => {
     if (isSearching) {
-      return { q: searchQuery.trim() };
+      return { q: searchQuery.trim(), sortOrder };
     }
     if (selectedCollection === "archive") {
-      return { status: "archived" };
+      return { status: "archived", sortOrder };
     }
     if (selectedCollection) {
-      return { collectionId: selectedCollection };
+      return { collectionId: selectedCollection, sortOrder };
     }
     if (selectedTag) {
-      return { tag: selectedTag };
+      return { tag: selectedTag, sortOrder };
     }
-    return {};
+    return { sortOrder };
   })();
 
   const {
@@ -891,6 +905,8 @@ export default function AuthenticatedApp({
               }}
               showTriageButton={links.length > 0}
               onToggleTriage={() => setTriageMode(true)}
+              sortOrder={sortOrder}
+              onToggleSortOrder={toggleSortOrder}
             />
           )}
 
@@ -905,6 +921,23 @@ export default function AuthenticatedApp({
               }}
             />
             <div className="flex items-center gap-2">
+              {/* Sort order toggle */}
+              <button
+                type="button"
+                onClick={toggleSortOrder}
+                className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium border border-border dark:border-dark-border text-neutral-600 dark:text-neutral-400 hover:bg-hover dark:hover:bg-dark-hover transition-colors"
+                title={sortOrder === "desc" ? "Newest first" : "Oldest first"}
+              >
+                {sortOrder === "desc" ? (
+                  <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 3a.75.75 0 01.75.75v10.638l3.96-4.158a.75.75 0 111.08 1.04l-5.25 5.5a.75.75 0 01-1.08 0l-5.25-5.5a.75.75 0 111.08-1.04l3.96 4.158V3.75A.75.75 0 0110 3z" clipRule="evenodd" />
+                  </svg>
+                ) : (
+                  <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 17a.75.75 0 01-.75-.75V5.612L5.29 9.77a.75.75 0 01-1.08-1.04l5.25-5.5a.75.75 0 011.08 0l5.25 5.5a.75.75 0 01-1.08 1.04l-3.96-4.158V16.25A.75.75 0 0110 17z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </button>
               {/* Triage button */}
               {links.length > 0 && !triageMode && (
                 <button

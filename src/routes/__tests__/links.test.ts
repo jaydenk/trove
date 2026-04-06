@@ -679,6 +679,65 @@ describe("links routes", () => {
     });
   });
 
+  describe("GET /api/links sort_order", () => {
+    test("returns links in ascending order when sort_order=asc", async () => {
+      const app = createApp();
+      // Insert links with known timestamps
+      db.query(
+        `INSERT INTO links (id, user_id, url, title, domain, collection_id, status, extraction_status, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'saved', 'completed', ?)`
+      ).run("link-old", userId, "https://example.com/old", "Old Link", "example.com", inboxId, "2024-01-01T00:00:00Z");
+      db.query(
+        `INSERT INTO links (id, user_id, url, title, domain, collection_id, status, extraction_status, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'saved', 'completed', ?)`
+      ).run("link-new", userId, "https://example.com/new", "New Link", "example.com", inboxId, "2025-01-01T00:00:00Z");
+
+      const res = await app.request("/api/links?sort_order=asc", {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.data[0].id).toBe("link-old");
+      expect(body.data[1].id).toBe("link-new");
+    });
+
+    test("returns links in descending order by default", async () => {
+      const app = createApp();
+      db.query(
+        `INSERT INTO links (id, user_id, url, title, domain, collection_id, status, extraction_status, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'saved', 'completed', ?)`
+      ).run("link-old", userId, "https://example.com/old", "Old Link", "example.com", inboxId, "2024-01-01T00:00:00Z");
+      db.query(
+        `INSERT INTO links (id, user_id, url, title, domain, collection_id, status, extraction_status, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'saved', 'completed', ?)`
+      ).run("link-new", userId, "https://example.com/new", "New Link", "example.com", inboxId, "2025-01-01T00:00:00Z");
+
+      const res = await app.request("/api/links", {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.data[0].id).toBe("link-new");
+      expect(body.data[1].id).toBe("link-old");
+    });
+
+    test("ignores invalid sort_order values", async () => {
+      const app = createApp();
+      db.query(
+        `INSERT INTO links (id, user_id, url, title, domain, collection_id, status, extraction_status, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'saved', 'completed', ?)`
+      ).run("link-1", userId, "https://example.com/1", "Link 1", "example.com", inboxId, "2024-01-01T00:00:00Z");
+
+      const res = await app.request("/api/links?sort_order=DROP TABLE", {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      expect(res.status).toBe(200);
+      // Falls back to default DESC — doesn't crash
+      const body = await res.json();
+      expect(body.data.length).toBe(1);
+    });
+  });
+
   describe("POST /api/links with pre-extracted content", () => {
     test("sets extraction_status to completed when content is provided", async () => {
       const app = createApp();

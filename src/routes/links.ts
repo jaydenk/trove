@@ -32,6 +32,7 @@ links.get("/api/links", (c) => {
   const domain = c.req.query("domain");
   const status = c.req.query("status");
   const source = c.req.query("source");
+  const sort_order = c.req.query("sort_order") as "asc" | "desc" | undefined;
   const page = c.req.query("page") ? parseInt(c.req.query("page")!, 10) : 1;
   const limit = c.req.query("limit")
     ? parseInt(c.req.query("limit")!, 10)
@@ -44,6 +45,7 @@ links.get("/api/links", (c) => {
     domain,
     status,
     source,
+    sort_order,
     page,
     limit,
   });

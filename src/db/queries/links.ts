@@ -66,6 +66,7 @@ export interface ListLinksFilters {
   source?: string;
   page?: number;
   limit?: number;
+  sort_order?: "asc" | "desc";
 }
 
 export interface PaginatedLinks {
@@ -242,7 +243,8 @@ export function listLinks(
   const totalPages = Math.ceil(total / limit) || 1;
 
   // Data query
-  const dataSql = `SELECT l.*${selectSnippet} ${fromClause} ${whereClause} ORDER BY l.created_at DESC LIMIT ? OFFSET ?`;
+  const sortDirection = filters.sort_order === "asc" ? "ASC" : "DESC";
+  const dataSql = `SELECT l.*${selectSnippet} ${fromClause} ${whereClause} ORDER BY l.created_at ${sortDirection} LIMIT ? OFFSET ?`;
   const dataParams = [...params, limit, offset];
   const rows = db
     .query<Link & { snippet?: string }, (string | number)[]>(dataSql)

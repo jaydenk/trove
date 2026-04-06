@@ -486,7 +486,7 @@ describe("manifest validation", () => {
 
 function loadManifest(filename: string): unknown {
   const raw = readFileSync(
-    join(import.meta.dir, "..", "..", "..", "data", "plugins", filename),
+    join(import.meta.dir, "..", "manifests", filename),
     "utf-8"
   );
   return JSON.parse(raw);

@@ -26,7 +26,7 @@ export interface SeedResult {
  * Skips any that already exist in the database. Safe to call repeatedly.
  */
 export function seedSystemPlugins(db: Database): void {
-  const pluginsDir = join(import.meta.dir, "..", "data", "plugins");
+  const pluginsDir = join(import.meta.dir, "plugins", "manifests");
   let files: string[];
   try {
     files = readdirSync(pluginsDir).filter((f) => f.endsWith(".json"));

@@ -21,7 +21,8 @@ Trove is a self-hosted link inbox for people who save links from many sources an
 - **Collections and tags** — organise your link inbox with collections (inbox default, archive virtual entry) and tags (hidden when empty, sidebar filtering)
 - **Full-text search** — SQLite FTS5 with prefix matching and highlighted snippets
 - **Bulk actions** — Select button, long-press on mobile, Select All, keyboard shortcut (`x`), move/archive/delete
-- **Customisable swipe actions** — swipe left/right on mobile to archive, delete, or trigger any plugin
+- **Customisable swipe actions** — two-tier swipe on mobile (partial reveal shows two actions, full swipe triggers outer action)
+- **Sort order toggle** — switch between newest-first and oldest-first, persisted per user
 - **Right-click context menu** — archive, delete, send to plugin, or copy URL on desktop
 - **Automatic content extraction** — browser extension captures rendered DOM; server fallback for API saves
 - **Smart import/export** — auto-detects HTML bookmarks, JSON (any structure), CSV/TSV, or plain text; preview and select items before importing; include/exclude tags
@@ -111,7 +112,8 @@ Full documentation is available in the [`docs/`](docs/) directory:
 - Dark mode (light, dark, system)
 - Full-text search with FTS5 and highlighted snippets
 - Bulk actions (select, archive, delete, move)
-- Customisable swipe actions on mobile
+- Two-tier customisable swipe actions on mobile
+- Sort order toggle (newest/oldest first)
 - Right-click context menu on desktop
 - Plugin system with Reader and Things plugins
 - Browser extensions (Chrome + Safari)

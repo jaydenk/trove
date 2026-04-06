@@ -9,6 +9,7 @@ export interface UseLinksFilters {
   collectionId?: string;
   tag?: string;
   status?: string;
+  sortOrder?: "asc" | "desc";
 }
 
 export interface UseLinksResult {
@@ -23,7 +24,7 @@ export interface UseLinksResult {
 }
 
 export function useLinks(filters: UseLinksFilters = {}): UseLinksResult {
-  const { q, collectionId, tag, status } = filters;
+  const { q, collectionId, tag, status, sortOrder } = filters;
 
   const [links, setLinks] = useState<Link[]>([]);
   const [page, setPage] = useState(1);
@@ -39,7 +40,7 @@ export function useLinks(filters: UseLinksFilters = {}): UseLinksResult {
   const loadingLockRef = useRef(false);
 
   // Track current filters to detect changes
-  const filtersRef = useRef({ q, collectionId, tag, status });
+  const filtersRef = useRef({ q, collectionId, tag, status, sortOrder });
 
   // Reset when filters change
   useEffect(() => {
@@ -48,16 +49,17 @@ export function useLinks(filters: UseLinksFilters = {}): UseLinksResult {
       prev.q !== q ||
       prev.collectionId !== collectionId ||
       prev.tag !== tag ||
-      prev.status !== status
+      prev.status !== status ||
+      prev.sortOrder !== sortOrder
     ) {
-      filtersRef.current = { q, collectionId, tag, status };
+      filtersRef.current = { q, collectionId, tag, status, sortOrder };
       loadingLockRef.current = false;
       setLinks([]);
       setPage(1);
       setHasMore(true);
       setIsLoading(true);
     }
-  }, [q, collectionId, tag, status]);
+  }, [q, collectionId, tag, status, sortOrder]);
 
   // Fetch the current page
   const fetchPage = useCallback(
@@ -73,6 +75,7 @@ export function useLinks(filters: UseLinksFilters = {}): UseLinksResult {
           collection_id: collectionId || undefined,
           tag: tag || undefined,
           status: status || undefined,
+          sort_order: sortOrder || undefined,
           page: pageNum,
           limit: PAGE_SIZE,
         });
@@ -98,7 +101,7 @@ export function useLinks(filters: UseLinksFilters = {}): UseLinksResult {
         setIsLoadingMore(false);
       }
     },
-    [q, collectionId, tag, status],
+    [q, collectionId, tag, status, sortOrder],
   );
 
   // Fetch when page, filters, or fetchId changes

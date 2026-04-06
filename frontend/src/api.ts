@@ -250,6 +250,7 @@ export interface ListLinksParams {
   source?: string;
   page?: number;
   limit?: number;
+  sort_order?: "asc" | "desc";
 }
 
 function buildQuery(params: Record<string, string | number | undefined>): string {

@@ -32,6 +32,12 @@ const filters: Record<string, FilterFn> = {
       .join("");
   },
   default: (v, arg) => (v === "" && arg !== undefined ? arg : v),
+  splitcsv: (v) => {
+    if (!v.trim()) return "[]";
+    return JSON.stringify(
+      v.split(",").map((t) => t.trim()).filter(Boolean)
+    );
+  },
 };
 
 // ---------------------------------------------------------------------------

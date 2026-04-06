@@ -15,7 +15,7 @@ Trove is a self-hosted link inbox for people who save links from many sources an
 ## Features
 
 - **Save from anywhere** — browser extension (Chrome + Safari), iOS share extension, bookmarklet, API, webhooks
-- **Triage mode** — focused card-by-card flow for rapid inbox processing with keyboard shortcuts (`T` to enter, `1`-`9` for plugins, `A` archive, `D` delete, `S` skip)
+- **Triage mode** — focused card-by-card flow for rapid inbox processing with keyboard shortcuts (`T` to enter, `1`-`9` for plugins, `A` archive, `M` move to collection, `D` delete, `S` skip)
 - **Route links outward** — declarative plugin system sends links to Reader, Things, Notion, or any HTTP API
 - **Ingest links inward** — receive from n8n, RSS, Zapier, or any automation tool via webhooks
 - **Collections and tags** — organise your link inbox with collections (inbox default, archive virtual entry) and tags (hidden when empty, sidebar filtering)
@@ -74,6 +74,27 @@ Full documentation is available in the [`docs/`](docs/) directory:
 - [Self-Hosting & Deployment](docs/self-hosting.md) — Docker, Traefik, environment variables, CI/CD
 
 ## Releases
+
+### 1.3.3
+
+- Fix sidebar collection counts not updating when links are moved, archived, or deleted (dual bug: SQL counted archived links, sidebar had independent state)
+- Fix swipe archive action not toggling to unarchive when viewing the archive collection
+- Add move-to-collection action in triage mode (`M` key or button) with dropdown collection picker
+- Convert Things plugin from URL scheme redirect to server-side API call via [Things API](https://github.com/jaydenk/things-api), with health check support
+- Add `splitcsv` template filter for converting comma-separated config values to JSON arrays
+
+### 1.3.2
+
+- Bump version, update docs for sort toggle and two-tier swipe
+
+### 1.3.1
+
+- Rewrite swipe to two-tier reveal with tappable action buttons
+- Expand swipe preferences from 2 to 4 configurable slots
+
+### 1.3.0
+
+- Add sort order toggle to desktop header and mobile nav
 
 ### 1.2.2
 

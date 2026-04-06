@@ -2,10 +2,22 @@
   "id": "things",
   "name": "Things",
   "icon": "✅",
-  "description": "Create a task in Things from a link",
-  "version": "1.1.1",
+  "description": "Create a task in Things from a link via the Things API",
+  "version": "2.0.0",
   "direction": "export",
   "config": {
+    "THINGS_API_URL": {
+      "label": "Things API URL",
+      "type": "string",
+      "required": true,
+      "placeholder": "e.g. http://localhost:5225"
+    },
+    "THINGS_API_TOKEN": {
+      "label": "Things API Token",
+      "type": "string",
+      "required": true,
+      "placeholder": "Bearer token for the Things API"
+    },
     "THINGS_PROJECT": {
       "label": "Default Project",
       "type": "string",
@@ -27,8 +39,28 @@
     }
   },
   "execute": {
-    "type": "url-redirect",
+    "type": "api-call",
     "actionLabel": "Send to Things",
-    "urlTemplate": "things:///add?title={{link.title|urlencode}}&notes={{link.url|urlencode}}&tags={{config.THINGS_TAGS|default:trove|urlencode}}&list={{config.THINGS_PROJECT|urlencode}}&when={{config.THINGS_WHEN|urlencode}}"
+    "method": "POST",
+    "url": "{{config.THINGS_API_URL}}/todos",
+    "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{config.THINGS_API_TOKEN}}"
+    },
+    "body": {
+      "title": "{{link.title}}",
+      "notes": "{{link.url}}",
+      "when": "{{config.THINGS_WHEN}}",
+      "tags": "{{config.THINGS_TAGS|default:trove|splitcsv}}",
+      "list_title": "{{config.THINGS_PROJECT}}"
+    },
+    "successMessage": "Task created in Things"
+  },
+  "healthCheck": {
+    "url": "{{config.THINGS_API_URL}}/health",
+    "headers": {
+      "Authorization": "Bearer {{config.THINGS_API_TOKEN}}"
+    },
+    "expectedStatus": 200
   }
 }

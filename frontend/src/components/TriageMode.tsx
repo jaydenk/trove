@@ -93,6 +93,7 @@ export interface TriageModeProps {
   loadMore: () => void;
   onArchive: (id: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onMoveToCollection: (linkId: string, collectionId: string) => Promise<void>;
   onPluginAction: (linkId: string, pluginId: string) => Promise<void>;
   onExit: () => void;
   onRefresh: () => void;
@@ -107,6 +108,7 @@ export default function TriageMode({
   loadMore,
   onArchive,
   onDelete,
+  onMoveToCollection,
   onPluginAction,
   onExit,
   onRefresh,
@@ -118,6 +120,8 @@ export default function TriageMode({
   const [skippedIds] = useState<Set<string>>(() => new Set());
   const feedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [history, setHistory] = useState<number[]>([]);
+  const [showCollectionPicker, setShowCollectionPicker] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
 
   // Load all remaining pages so triage covers the full set, not just
   // whatever was loaded via infinite scroll before entering triage.
@@ -209,6 +213,21 @@ export default function TriageMode({
     setCurrentIndex(prevIndex);
   }, [processing, history]);
 
+  const handleMoveToCollection = useCallback(
+    (collectionId: string) => {
+      if (!currentLink) return;
+      const id = currentLink.id;
+      const col = collections.find((c) => c.id === collectionId);
+      setShowCollectionPicker(false);
+      setHistory((prev) => [...prev, currentIndex]);
+      return performAction(
+        () => onMoveToCollection(id, collectionId),
+        `Moved to ${col?.name ?? "collection"}`,
+      );
+    },
+    [currentLink, currentIndex, collections, performAction, onMoveToCollection],
+  );
+
   // Keyboard shortcuts
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -218,7 +237,16 @@ export default function TriageMode({
       switch (e.key) {
         case "Escape":
           e.preventDefault();
-          onExit();
+          if (showCollectionPicker) {
+            setShowCollectionPicker(false);
+          } else {
+            onExit();
+          }
+          break;
+        case "m":
+        case "M":
+          e.preventDefault();
+          setShowCollectionPicker((v) => !v);
           break;
         case "a":
         case "A":
@@ -269,7 +297,20 @@ export default function TriageMode({
     handleBack,
     handlePlugin,
     executablePlugins.length,
+    showCollectionPicker,
   ]);
+
+  // Close collection picker on outside click
+  useEffect(() => {
+    if (!showCollectionPicker) return;
+    function handleClick(e: MouseEvent) {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setShowCollectionPicker(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showCollectionPicker]);
 
   // Find the collection name for the current link
   const currentCollection = currentLink?.collectionId
@@ -495,6 +536,37 @@ export default function TriageMode({
             </div>
           )}
 
+          {/* Move to collection */}
+          <div className="relative" ref={pickerRef}>
+            <button
+              type="button"
+              onClick={() => setShowCollectionPicker((v) => !v)}
+              disabled={processing}
+              className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-border dark:border-dark-border text-neutral-700 dark:text-neutral-300 px-3 py-3 text-sm hover:bg-hover dark:hover:bg-dark-hover disabled:opacity-40 transition-colors"
+            >
+              <svg className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M3.75 3A1.75 1.75 0 002 4.75v3.26a3.235 3.235 0 011.75-.51h12.5c.644 0 1.245.188 1.75.51V6.75A1.75 1.75 0 0016.25 5h-4.836a.25.25 0 01-.177-.073L9.823 3.513A1.75 1.75 0 008.586 3H3.75z" />
+                <path d="M3.75 9A1.75 1.75 0 002 10.75v4.5c0 .966.784 1.75 1.75 1.75h12.5A1.75 1.75 0 0018 15.25v-4.5A1.75 1.75 0 0016.25 9H3.75z" />
+              </svg>
+              Move to...
+            </button>
+            {showCollectionPicker && (
+              <div className="absolute bottom-full left-0 right-0 mb-1 rounded-lg border border-border dark:border-dark-border bg-card dark:bg-dark-card shadow-lg overflow-hidden z-50">
+                {collections.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => handleMoveToCollection(c.id)}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-hover dark:hover:bg-dark-hover transition-colors text-left"
+                  >
+                    <span className="w-5 text-center shrink-0">{c.icon ?? "📁"}</span>
+                    <span className="truncate">{c.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Standard actions */}
           <div className="flex gap-2">
             <button
@@ -581,6 +653,36 @@ export default function TriageMode({
           {executablePlugins.length > 0 && (
             <span className="w-px h-6 bg-border dark:bg-dark-border mx-1" />
           )}
+
+          {/* Move to collection */}
+          <div className="relative" ref={showCollectionPicker ? pickerRef : undefined}>
+            <button
+              type="button"
+              onClick={() => setShowCollectionPicker((v) => !v)}
+              disabled={processing}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border dark:border-dark-border text-neutral-700 dark:text-neutral-300 px-3 py-2 text-sm hover:bg-hover dark:hover:bg-dark-hover disabled:opacity-40 transition-colors"
+            >
+              <kbd className="px-1 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 font-mono text-[10px] text-muted dark:text-dark-muted">
+                M
+              </kbd>
+              Move to...
+            </button>
+            {showCollectionPicker && (
+              <div className="absolute bottom-full left-0 mb-1 min-w-[10rem] rounded-lg border border-border dark:border-dark-border bg-card dark:bg-dark-card shadow-lg overflow-hidden z-50">
+                {collections.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => handleMoveToCollection(c.id)}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-hover dark:hover:bg-dark-hover transition-colors text-left"
+                  >
+                    <span className="w-5 text-center shrink-0">{c.icon ?? "📁"}</span>
+                    <span className="truncate">{c.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Archive */}
           <button

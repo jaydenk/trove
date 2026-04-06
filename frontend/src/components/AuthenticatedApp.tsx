@@ -284,7 +284,7 @@ export default function AuthenticatedApp({
     }
   }, [theme]);
 
-  const { collections, refetch: refetchCollections } = useCollections();
+  const { collections, isLoading: collectionsLoading, refetch: refetchCollections } = useCollections();
   const { plugins, refetch: refetchPlugins } = usePlugins();
 
   // Default to inbox collection once collections are loaded
@@ -542,7 +542,11 @@ export default function AuthenticatedApp({
     async (link: Link, action: SwipeAction) => {
       try {
         if (action === "archive") {
-          await api.links.archive(link.id);
+          if (link.status === "archived") {
+            await api.links.update(link.id, { status: "saved" });
+          } else {
+            await api.links.archive(link.id);
+          }
           refetchLinks();
           refetchCollections();
         } else if (action === "delete") {
@@ -608,6 +612,14 @@ export default function AuthenticatedApp({
         window.open(result.url, "_blank", "noopener,noreferrer");
       }
       // Backend auto-archives on successful action
+      refetchCollections();
+    },
+    [refetchCollections],
+  );
+
+  const handleTriageMoveToCollection = useCallback(
+    async (linkId: string, collectionId: string) => {
+      await api.links.update(linkId, { collectionId });
       refetchCollections();
     },
     [refetchCollections],
@@ -827,6 +839,8 @@ export default function AuthenticatedApp({
       {/* Desktop sidebar */}
       <div className="hidden lg:block">
         <CollectionSidebar
+          collections={collections}
+          collectionsLoading={collectionsLoading}
           selectedCollection={selectedCollection}
           onSelectCollection={handleSelectCollection}
           selectedTag={selectedTag}
@@ -848,6 +862,8 @@ export default function AuthenticatedApp({
           />
           <div className="relative z-10 h-full w-56">
             <CollectionSidebar
+              collections={collections}
+              collectionsLoading={collectionsLoading}
               selectedCollection={selectedCollection}
               onSelectCollection={handleSelectCollection}
               selectedTag={selectedTag}
@@ -1028,6 +1044,7 @@ export default function AuthenticatedApp({
               loadMore={loadMore}
               onArchive={handleTriageArchive}
               onDelete={handleTriageDelete}
+              onMoveToCollection={handleTriageMoveToCollection}
               onPluginAction={handleTriagePluginAction}
               onExit={handleTriageExit}
               onRefresh={refetchLinks}

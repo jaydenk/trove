@@ -52,8 +52,9 @@ export function listCollections(
     .query<CollectionWithCount, [string, string]>(
       `SELECT c.*, COALESCE(COUNT(l.id), 0) as link_count
        FROM collections c
-       LEFT JOIN links l ON l.collection_id = c.id
-         OR (l.collection_id IS NULL AND l.user_id = c.user_id AND c.name = ?)
+       LEFT JOIN links l ON (l.collection_id = c.id
+         OR (l.collection_id IS NULL AND l.user_id = c.user_id AND c.name = ?))
+         AND l.status != 'archived'
        WHERE c.user_id = ?
        GROUP BY c.id
        ORDER BY c.name`

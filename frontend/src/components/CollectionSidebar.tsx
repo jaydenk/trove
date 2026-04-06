@@ -1,7 +1,9 @@
-import { useCollections } from "../hooks/useCollections";
 import { useTags } from "../hooks/useTags";
+import type { Collection } from "../api";
 
 export interface CollectionSidebarProps {
+  collections: Collection[];
+  collectionsLoading: boolean;
   selectedCollection: string | null;
   onSelectCollection: (id: string | null) => void;
   selectedTag: string | null;
@@ -14,6 +16,8 @@ export interface CollectionSidebarProps {
 }
 
 export default function CollectionSidebar({
+  collections,
+  collectionsLoading,
   selectedCollection,
   onSelectCollection,
   selectedTag,
@@ -24,7 +28,6 @@ export default function CollectionSidebar({
   userName,
   onSignOut,
 }: CollectionSidebarProps) {
-  const { collections, isLoading: collectionsLoading } = useCollections();
   const { tags, isLoading: tagsLoading } = useTags();
 
   const visibleTags = tags.filter((t) => (t.linkCount ?? 0) > 0);

@@ -180,82 +180,118 @@ export interface LinkCardProps {
 // Swipe threshold and helpers
 // ---------------------------------------------------------------------------
 
-const SWIPE_THRESHOLD = 80;
-const MAX_SWIPE = 120;
+const REVEAL_THRESHOLD = 60;
+const FULL_SWIPE_THRESHOLD = 160;
+const BUTTON_WIDTH = 72;
+
+type SwipeState = "idle" | "swiping" | "revealed";
 
 function useSwipe(
   enabled: boolean,
-  onSwipeLeft: (() => void) | undefined,
-  onSwipeRight: (() => void) | undefined,
+  hasLeftActions: boolean,
+  hasRightActions: boolean,
 ) {
   const startX = useRef(0);
   const startY = useRef(0);
   const currentOffset = useRef(0);
+  const directionLocked = useRef(false);
   const isSwiping = useRef(false);
   const [offset, setOffset] = useState(0);
-  const [triggered, setTriggered] = useState<"left" | "right" | null>(null);
+  const [swipeState, setSwipeState] = useState<SwipeState>("idle");
+  const [revealedDirection, setRevealedDirection] = useState<"left" | "right" | null>(null);
+  const [fullSwipeTriggered, setFullSwipeTriggered] = useState<"left" | "right" | null>(null);
+
+  const dismiss = useCallback(() => {
+    setOffset(0);
+    setSwipeState("idle");
+    setRevealedDirection(null);
+    currentOffset.current = 0;
+  }, []);
 
   const onTouchStart = useCallback(
     (e: React.TouchEvent) => {
       if (!enabled) return;
+      // If revealed, a touch on the card should dismiss
+      if (swipeState === "revealed") return;
       startX.current = e.touches[0].clientX;
       startY.current = e.touches[0].clientY;
       currentOffset.current = 0;
+      directionLocked.current = false;
       isSwiping.current = false;
-      setTriggered(null);
+      setFullSwipeTriggered(null);
     },
-    [enabled],
+    [enabled, swipeState],
   );
 
   const onTouchMove = useCallback(
     (e: React.TouchEvent) => {
-      if (!enabled) return;
+      if (!enabled || swipeState === "revealed") return;
       const dx = e.touches[0].clientX - startX.current;
       const dy = e.touches[0].clientY - startY.current;
 
       // If vertical scroll is dominant, bail out
-      if (!isSwiping.current && Math.abs(dy) > Math.abs(dx)) return;
+      if (!directionLocked.current && Math.abs(dy) > Math.abs(dx)) return;
+      directionLocked.current = true;
       isSwiping.current = true;
 
-      // Clamp offset
-      const clamped = Math.max(-MAX_SWIPE, Math.min(MAX_SWIPE, dx));
-      // Only allow left swipe if handler exists, same for right
-      if (clamped < 0 && !onSwipeLeft) return;
-      if (clamped > 0 && !onSwipeRight) return;
+      // Constrain by available actions
+      if (dx < 0 && !hasLeftActions) return;
+      if (dx > 0 && !hasRightActions) return;
+
+      // Rubber-band clamp
+      const max = FULL_SWIPE_THRESHOLD + 40;
+      const clamped = Math.max(-max, Math.min(max, dx));
 
       currentOffset.current = clamped;
       setOffset(clamped);
+      setSwipeState("swiping");
     },
-    [enabled, onSwipeLeft, onSwipeRight],
+    [enabled, hasLeftActions, hasRightActions, swipeState],
   );
 
   const onTouchEnd = useCallback(() => {
-    if (!enabled || !isSwiping.current) return;
+    if (!enabled || !isSwiping.current || swipeState === "revealed") return;
 
     const off = currentOffset.current;
-    if (off < -SWIPE_THRESHOLD && onSwipeLeft) {
-      setTriggered("left");
-      // Animate out briefly then reset
+    const absOff = Math.abs(off);
+    const direction = off < 0 ? "left" : "right";
+
+    if (absOff >= FULL_SWIPE_THRESHOLD) {
+      // Full swipe — trigger outermost action
+      setFullSwipeTriggered(direction);
+      // Briefly hold then reset
       setTimeout(() => {
-        onSwipeLeft();
         setOffset(0);
-        setTriggered(null);
+        setSwipeState("idle");
+        setRevealedDirection(null);
+        currentOffset.current = 0;
       }, 200);
-    } else if (off > SWIPE_THRESHOLD && onSwipeRight) {
-      setTriggered("right");
-      setTimeout(() => {
-        onSwipeRight();
-        setOffset(0);
-        setTriggered(null);
-      }, 200);
+    } else if (absOff >= REVEAL_THRESHOLD) {
+      // Partial swipe — snap to revealed position
+      const revealOffset = BUTTON_WIDTH * 2; // 144px
+      setOffset(direction === "left" ? -revealOffset : revealOffset);
+      currentOffset.current = direction === "left" ? -revealOffset : revealOffset;
+      setSwipeState("revealed");
+      setRevealedDirection(direction);
     } else {
+      // Below threshold — snap back
       setOffset(0);
+      setSwipeState("idle");
     }
 
     isSwiping.current = false;
-  }, [enabled, onSwipeLeft, onSwipeRight]);
+  }, [enabled, swipeState]);
 
-  return { offset, triggered, onTouchStart, onTouchMove, onTouchEnd };
+  return {
+    offset,
+    swipeState,
+    revealedDirection,
+    fullSwipeTriggered,
+    dismiss,
+    onTouchStart,
+    onTouchMove,
+    onTouchEnd,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -302,6 +338,31 @@ function swipeActionIcon(action: SwipeAction, plugins?: PluginInfo[]): React.Rea
     if (plugin) return <span className="text-sm">{plugin.icon}</span>;
   }
   return null;
+}
+
+function SwipeButton({
+  action,
+  plugins,
+  onClick,
+}: {
+  action: SwipeAction;
+  plugins?: PluginInfo[];
+  onClick: () => void;
+}) {
+  if (action === "none") return null;
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      className={`flex flex-col items-center justify-center w-[72px] h-full text-white text-xs font-medium ${swipeActionBg(action)}`}
+    >
+      {swipeActionIcon(action, plugins)}
+      <span className="mt-0.5">{swipeActionLabel(action, plugins)}</span>
+    </button>
+  );
 }
 
 export default function LinkCard({
@@ -394,43 +455,88 @@ export default function LinkCard({
     return () => window.removeEventListener("resize", handler);
   }, []);
 
-  // Build swipe handlers from configured actions (using outer for now — Task 4 will add two-tier)
-  const handleSwipeLeft = swipeLeftOuter !== "none" && onSwipeAction
-    ? () => onSwipeAction(link, swipeLeftOuter)
-    : undefined;
+  const hasLeftActions = (swipeLeftInner !== "none" || swipeLeftOuter !== "none") && !!onSwipeAction;
+  const hasRightActions = (swipeRightInner !== "none" || swipeRightOuter !== "none") && !!onSwipeAction;
 
-  const handleSwipeRight = swipeRightOuter !== "none" && onSwipeAction
-    ? () => onSwipeAction(link, swipeRightOuter)
-    : undefined;
+  const {
+    offset, swipeState, revealedDirection, fullSwipeTriggered, dismiss,
+    onTouchStart, onTouchMove, onTouchEnd,
+  } = useSwipe(isMobile && !isSelectable, hasLeftActions, hasRightActions);
 
-  const { offset, triggered, onTouchStart, onTouchMove, onTouchEnd } =
-    useSwipe(isMobile, handleSwipeLeft, handleSwipeRight);
-
-  // Background colours and labels for swipe indicators
-  const activeAction = offset < 0 ? swipeLeftOuter : swipeRightOuter;
-  const swipeBg = swipeActionBg(activeAction);
-  const swipeLabel = swipeActionLabel(activeAction, plugins);
+  // Handle full swipe trigger
+  useEffect(() => {
+    if (fullSwipeTriggered && onSwipeAction) {
+      const action = fullSwipeTriggered === "left" ? swipeLeftOuter : swipeRightOuter;
+      if (action !== "none") onSwipeAction(link, action);
+    }
+  }, [fullSwipeTriggered, onSwipeAction, link, swipeLeftOuter, swipeRightOuter]);
 
   return (
     <div className="relative overflow-hidden flex flex-col">
-      {/* Swipe background layer (mobile only) */}
-      {isMobile && offset !== 0 && (
-        <div
-          className={`absolute inset-0 flex items-center ${offset < 0 ? "justify-end" : "justify-start"} px-5 ${swipeBg} text-white text-sm font-medium`}
-        >
-          {(triggered || Math.abs(offset) >= SWIPE_THRESHOLD) && (
-            <span className="flex items-center gap-1.5">
-              {swipeActionIcon(activeAction, plugins)}
-              {swipeLabel}
-            </span>
-          )}
+      {/* Swipe action buttons (mobile only) */}
+      {isMobile && (offset !== 0 || swipeState === "revealed") && (
+        <div className="absolute inset-0 flex">
+          {offset > 0 ? (
+            /* Right swipe — buttons on left side */
+            <div className="flex h-full">
+              <SwipeButton
+                action={swipeRightOuter}
+                plugins={plugins}
+                onClick={() => {
+                  dismiss();
+                  if (onSwipeAction && swipeRightOuter !== "none") onSwipeAction(link, swipeRightOuter);
+                }}
+              />
+              <SwipeButton
+                action={swipeRightInner}
+                plugins={plugins}
+                onClick={() => {
+                  dismiss();
+                  if (onSwipeAction && swipeRightInner !== "none") onSwipeAction(link, swipeRightInner);
+                }}
+              />
+            </div>
+          ) : offset < 0 ? (
+            /* Left swipe — buttons on right side */
+            <div className="flex h-full ml-auto">
+              <SwipeButton
+                action={swipeLeftInner}
+                plugins={plugins}
+                onClick={() => {
+                  dismiss();
+                  if (onSwipeAction && swipeLeftInner !== "none") onSwipeAction(link, swipeLeftInner);
+                }}
+              />
+              <SwipeButton
+                action={swipeLeftOuter}
+                plugins={plugins}
+                onClick={() => {
+                  dismiss();
+                  if (onSwipeAction && swipeLeftOuter !== "none") onSwipeAction(link, swipeLeftOuter);
+                }}
+              />
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      {/* Full-swipe colour indicator */}
+      {isMobile && swipeState === "swiping" && Math.abs(offset) >= FULL_SWIPE_THRESHOLD && (
+        <div className={`absolute inset-0 flex items-center ${offset < 0 ? "justify-end" : "justify-start"} px-5 ${swipeActionBg(offset < 0 ? swipeLeftOuter : swipeRightOuter)} text-white text-sm font-medium`}>
+          <span className="flex items-center gap-1.5">
+            {swipeActionIcon(offset < 0 ? swipeLeftOuter : swipeRightOuter, plugins)}
+            {swipeActionLabel(offset < 0 ? swipeLeftOuter : swipeRightOuter, plugins)}
+          </span>
         </div>
       )}
 
       <button
         type="button"
         onClick={(e) => {
-          // Don't fire click if we just finished a swipe or long-press
+          if (swipeState === "revealed") {
+            dismiss();
+            return;
+          }
           if (Math.abs(offset) > 5) return;
           if (longPressTriggered.current) {
             longPressTriggered.current = false;
@@ -456,13 +562,10 @@ export default function LinkCard({
           handleLongPressEnd();
           onTouchEnd();
         }}
-        style={
-          isMobile && offset !== 0
-            ? { transform: `translateX(${offset}px)`, transition: triggered ? "transform 0.2s ease-out" : "none" }
-            : triggered
-              ? { transition: "transform 0.2s ease-out" }
-              : undefined
-        }
+        style={{
+          transform: `translateX(${offset}px)`,
+          transition: swipeState === "swiping" ? "none" : "transform 0.2s ease-out",
+        }}
         className={`group w-full text-left px-4 py-3 border-b border-border dark:border-dark-border transition-colors cursor-pointer relative bg-surface dark:bg-dark ${
           isFocused
             ? "border-l-2 border-l-neutral-500 dark:border-l-neutral-400 pl-[14px]"

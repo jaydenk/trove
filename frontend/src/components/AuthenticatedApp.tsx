@@ -152,8 +152,10 @@ export default function AuthenticatedApp({
   // -----------------------------------------------------------------------
 
   const [theme, setThemeState] = useState<"light" | "dark" | "system">("system");
-  const [swipeLeftAction, setSwipeLeftState] = useState<SwipeAction>("delete");
-  const [swipeRightAction, setSwipeRightState] = useState<SwipeAction>("archive");
+  const [swipeLeftInner, setSwipeLeftInnerState] = useState<SwipeAction>("archive");
+  const [swipeLeftOuter, setSwipeLeftOuterState] = useState<SwipeAction>("delete");
+  const [swipeRightInner, setSwipeRightInnerState] = useState<SwipeAction>("none");
+  const [swipeRightOuter, setSwipeRightOuterState] = useState<SwipeAction>("archive");
   const [viewMode, setViewModeState] = useState<"condensed" | "expanded">("condensed");
   const [showImages, setShowImagesState] = useState(true);
   const [sortOrder, setSortOrderState] = useState<"asc" | "desc">("desc");
@@ -167,14 +169,26 @@ export default function AuthenticatedApp({
         setThemeState(t);
       }
       // Note: api.request() runs cameliseKeys on the response, so
-      // snake_case DB keys (swipe_left, view_mode) arrive as camelCase.
+      // snake_case DB keys arrive as camelCase.
+
+      // New four-slot swipe prefs
+      const sli = prefs.swipeLeftInner ?? prefs.swipe_left_inner;
+      if (sli) setSwipeLeftInnerState(sli as SwipeAction);
+      const slo = prefs.swipeLeftOuter ?? prefs.swipe_left_outer;
+      if (slo) setSwipeLeftOuterState(slo as SwipeAction);
+      const sri = prefs.swipeRightInner ?? prefs.swipe_right_inner;
+      if (sri) setSwipeRightInnerState(sri as SwipeAction);
+      const sro = prefs.swipeRightOuter ?? prefs.swipe_right_outer;
+      if (sro) setSwipeRightOuterState(sro as SwipeAction);
+
+      // Migration: if old keys exist but new ones don't, map old → outer
       const swipeLeft = prefs.swipeLeft ?? prefs.swipe_left;
-      if (swipeLeft) {
-        setSwipeLeftState(swipeLeft as SwipeAction);
+      if (swipeLeft && !slo) {
+        setSwipeLeftOuterState(swipeLeft as SwipeAction);
       }
       const swipeRight = prefs.swipeRight ?? prefs.swipe_right;
-      if (swipeRight) {
-        setSwipeRightState(swipeRight as SwipeAction);
+      if (swipeRight && !sro) {
+        setSwipeRightOuterState(swipeRight as SwipeAction);
       }
       const vm = prefs.viewMode ?? prefs.view_mode;
       if (vm === "condensed" || vm === "expanded") {
@@ -205,14 +219,21 @@ export default function AuthenticatedApp({
     api.preferences.set({ theme: value }).catch(() => {});
   }, []);
 
-  const setSwipeLeftAction = useCallback((value: SwipeAction) => {
-    setSwipeLeftState(value);
-    api.preferences.set({ swipe_left: value }).catch(() => {});
+  const setSwipeLeftInner = useCallback((value: SwipeAction) => {
+    setSwipeLeftInnerState(value);
+    api.preferences.set({ swipe_left_inner: value }).catch(() => {});
   }, []);
-
-  const setSwipeRightAction = useCallback((value: SwipeAction) => {
-    setSwipeRightState(value);
-    api.preferences.set({ swipe_right: value }).catch(() => {});
+  const setSwipeLeftOuter = useCallback((value: SwipeAction) => {
+    setSwipeLeftOuterState(value);
+    api.preferences.set({ swipe_left_outer: value }).catch(() => {});
+  }, []);
+  const setSwipeRightInner = useCallback((value: SwipeAction) => {
+    setSwipeRightInnerState(value);
+    api.preferences.set({ swipe_right_inner: value }).catch(() => {});
+  }, []);
+  const setSwipeRightOuter = useCallback((value: SwipeAction) => {
+    setSwipeRightOuterState(value);
+    api.preferences.set({ swipe_right_outer: value }).catch(() => {});
   }, []);
 
   const setViewMode = useCallback((value: "condensed" | "expanded") => {
@@ -870,10 +891,14 @@ export default function AuthenticatedApp({
             onThemeChange={setTheme}
             user={user}
             plugins={plugins}
-            swipeLeftAction={swipeLeftAction}
-            swipeRightAction={swipeRightAction}
-            onSwipeLeftChange={setSwipeLeftAction}
-            onSwipeRightChange={setSwipeRightAction}
+            swipeLeftInner={swipeLeftInner}
+            swipeLeftOuter={swipeLeftOuter}
+            swipeRightInner={swipeRightInner}
+            swipeRightOuter={swipeRightOuter}
+            onSwipeLeftInnerChange={setSwipeLeftInner}
+            onSwipeLeftOuterChange={setSwipeLeftOuter}
+            onSwipeRightInnerChange={setSwipeRightInner}
+            onSwipeRightOuterChange={setSwipeRightOuter}
             viewMode={viewMode}
             showImages={showImages}
             onViewModeChange={setViewMode}
@@ -1063,8 +1088,10 @@ export default function AuthenticatedApp({
                             onDelete={handleContextDelete}
                             onPluginAction={handleContextPluginAction}
                             onActionSuccess={() => { refetchLinks(); refetchCollections(); }}
-                            swipeLeftAction={swipeLeftAction}
-                            swipeRightAction={swipeRightAction}
+                            swipeLeftInner={swipeLeftInner}
+                            swipeLeftOuter={swipeLeftOuter}
+                            swipeRightInner={swipeRightInner}
+                            swipeRightOuter={swipeRightOuter}
                             onSwipeAction={handleSwipeAction}
                             viewMode={viewMode}
                             showImages={showImages}

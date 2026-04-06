@@ -21,10 +21,14 @@ interface SettingsViewProps {
   onThemeChange: (theme: ThemePreference) => void;
   user: User;
   plugins: PluginInfo[];
-  swipeLeftAction: SwipeAction;
-  swipeRightAction: SwipeAction;
-  onSwipeLeftChange: (action: SwipeAction) => void;
-  onSwipeRightChange: (action: SwipeAction) => void;
+  swipeLeftInner: SwipeAction;
+  swipeLeftOuter: SwipeAction;
+  swipeRightInner: SwipeAction;
+  swipeRightOuter: SwipeAction;
+  onSwipeLeftInnerChange: (action: SwipeAction) => void;
+  onSwipeLeftOuterChange: (action: SwipeAction) => void;
+  onSwipeRightInnerChange: (action: SwipeAction) => void;
+  onSwipeRightOuterChange: (action: SwipeAction) => void;
   viewMode: "condensed" | "expanded";
   showImages: boolean;
   onViewModeChange: (mode: "condensed" | "expanded") => void;
@@ -44,10 +48,14 @@ export default function SettingsView({
   onThemeChange,
   user,
   plugins,
-  swipeLeftAction,
-  swipeRightAction,
-  onSwipeLeftChange,
-  onSwipeRightChange,
+  swipeLeftInner,
+  swipeLeftOuter,
+  swipeRightInner,
+  swipeRightOuter,
+  onSwipeLeftInnerChange,
+  onSwipeLeftOuterChange,
+  onSwipeRightInnerChange,
+  onSwipeRightOuterChange,
   viewMode,
   showImages,
   onViewModeChange,
@@ -237,21 +245,23 @@ export default function SettingsView({
               Swipe Actions
             </h3>
             <p className="text-xs text-muted dark:text-dark-muted mb-4">
-              Configure what swiping left and right on link cards does on mobile.
+              Configure what swiping on link cards does on mobile. Partial swipe reveals both actions; full swipe triggers the outer action.
             </p>
-            <div className="space-y-4 max-w-sm">
-              <SwipeActionSelect
-                label="Swipe Left"
-                value={swipeLeftAction}
-                onChange={onSwipeLeftChange}
-                plugins={plugins}
-              />
-              <SwipeActionSelect
-                label="Swipe Right"
-                value={swipeRightAction}
-                onChange={onSwipeRightChange}
-                plugins={plugins}
-              />
+            <div className="space-y-6 max-w-sm">
+              <div>
+                <h4 className="text-xs font-medium text-muted dark:text-dark-muted uppercase tracking-wide mb-2">Swipe Left</h4>
+                <div className="space-y-3">
+                  <SwipeActionSelect label="Partial" value={swipeLeftInner} onChange={onSwipeLeftInnerChange} plugins={plugins} />
+                  <SwipeActionSelect label="Full swipe" value={swipeLeftOuter} onChange={onSwipeLeftOuterChange} plugins={plugins} />
+                </div>
+              </div>
+              <div>
+                <h4 className="text-xs font-medium text-muted dark:text-dark-muted uppercase tracking-wide mb-2">Swipe Right</h4>
+                <div className="space-y-3">
+                  <SwipeActionSelect label="Partial" value={swipeRightInner} onChange={onSwipeRightInnerChange} plugins={plugins} />
+                  <SwipeActionSelect label="Full swipe" value={swipeRightOuter} onChange={onSwipeRightOuterChange} plugins={plugins} />
+                </div>
+              </div>
             </div>
           </div>
         </div>

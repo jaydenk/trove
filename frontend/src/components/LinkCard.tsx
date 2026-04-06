@@ -167,8 +167,10 @@ export interface LinkCardProps {
   onDelete?: (link: Link) => void;
   onPluginAction?: (link: Link, plugin: PluginInfo) => void;
   onActionSuccess?: () => void;
-  swipeLeftAction?: SwipeAction;
-  swipeRightAction?: SwipeAction;
+  swipeLeftInner?: SwipeAction;
+  swipeLeftOuter?: SwipeAction;
+  swipeRightInner?: SwipeAction;
+  swipeRightOuter?: SwipeAction;
   onSwipeAction?: (link: Link, action: SwipeAction) => void;
   viewMode?: "condensed" | "expanded";
   showImages?: boolean;
@@ -317,8 +319,10 @@ export default function LinkCard({
   onDelete,
   onPluginAction,
   onActionSuccess,
-  swipeLeftAction = "delete",
-  swipeRightAction = "archive",
+  swipeLeftInner = "archive",
+  swipeLeftOuter = "delete",
+  swipeRightInner = "none",
+  swipeRightOuter = "archive",
   onSwipeAction,
   viewMode = "condensed",
   showImages = false,
@@ -390,20 +394,20 @@ export default function LinkCard({
     return () => window.removeEventListener("resize", handler);
   }, []);
 
-  // Build swipe handlers from configured actions
-  const handleSwipeLeft = swipeLeftAction !== "none" && onSwipeAction
-    ? () => onSwipeAction(link, swipeLeftAction)
+  // Build swipe handlers from configured actions (using outer for now — Task 4 will add two-tier)
+  const handleSwipeLeft = swipeLeftOuter !== "none" && onSwipeAction
+    ? () => onSwipeAction(link, swipeLeftOuter)
     : undefined;
 
-  const handleSwipeRight = swipeRightAction !== "none" && onSwipeAction
-    ? () => onSwipeAction(link, swipeRightAction)
+  const handleSwipeRight = swipeRightOuter !== "none" && onSwipeAction
+    ? () => onSwipeAction(link, swipeRightOuter)
     : undefined;
 
   const { offset, triggered, onTouchStart, onTouchMove, onTouchEnd } =
     useSwipe(isMobile, handleSwipeLeft, handleSwipeRight);
 
   // Background colours and labels for swipe indicators
-  const activeAction = offset < 0 ? swipeLeftAction : swipeRightAction;
+  const activeAction = offset < 0 ? swipeLeftOuter : swipeRightOuter;
   const swipeBg = swipeActionBg(activeAction);
   const swipeLabel = swipeActionLabel(activeAction, plugins);
 
